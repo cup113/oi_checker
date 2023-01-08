@@ -1,0 +1,126 @@
+# Some of the configurations are inspired by VSCode C/C++ extension and Manim.
+# TODO move them into README
+
+[default]
+# Note: All of the items in table `default` can be redefined by
+# command-line args.
+
+# Concurrent numbers.
+# (Should be implemented with multiprocessing only in Python because of the GIL)
+# Recommended: An integer between 1 and 16
+# Value: u32, >=1
+test_threads = 4
+
+# If the tested program doesn't finish in this duration (in milliseconds),
+# the result will be TLE.
+# Value: u32, >=1
+ac_timeout = 1000
+
+# If any program of a test suite doesn't finish in this duration
+# (in milliseconds), this suite will be terminated
+# and the result will be Unknown.
+# Value: u32, >=1
+program_timeout = 3000
+
+# Number of test cases. Each starts a test suite.
+# Recommended: A number in {5, 10, 20, 25, 50, 100}
+# Value: u32, >=1
+test_cases = 20
+
+# The directory which stores data files and compiled files.
+# Recommended: Folder name, excludes "."
+# Value: string, a valid directory name
+working_directory = "checking"
+
+# TODO
+tested_program = "tested.cpp"
+accepted_program = "accepted.cpp"
+data_generator = "data_generator.py"
+
+# Explanation ("related files" means one input file and two output files):
+# 1. "ac"
+#    If the test case is accepted, related files will be deleted.
+#    If all of them are accepted, the whole working directory will be deleted.
+# 2. "always" --- All files and the working directory will be deleted anyway.
+# 3. "never" --- No files will be deleted anyway.
+# Value: ONE OF {"ac", "always", "never"}
+auto_remove_files = "ac"
+
+# These filters will be applied with the output of tested & accepted program.
+# Explanation:
+# 1. strip-trailing-whitespace  --- strip whitespace at the end of the line
+# 2. strip-trailing-empty-lines --- strip empty lines at the end of the file
+# Values: array, including <string> 0~2 of the above filters
+output_filters = ["strip-trailing-whitespace", "strip-trailing-empty-lines"]
+
+# Value Choices:
+# 1. ["fc"[, <number>]] --- Use fc command in windows. If the number is given,
+#    it will be set as the maximum consecutive mismatches to the specified
+#    number of lines.
+# 2. ["diff"] --- use diff command in bash.
+# 3. ["custom", ...<command>] --- Use customized command.
+# Value: See above
+diff_tool = ["fc", "5"]
+
+[[compilation]]
+# If a file doesn't match any, nothing will happen.
+# Partial Python-style formatting:
+#    {var_name} to replace variable, {{...}} to escape to {...}
+
+# Extension names to match
+# Value: array, of <string> extension names
+ext = ["cpp", "cxx", "cc"]
+
+# The target file (usually executable)
+# Value: string, file path
+# VARIABLES support (examples):
+#    {work_folder}           --- ./checking
+#    {filename_no_extension} --- tested
+#    {filename}              --- tested.cpp
+target = "{work_folder}/{filename_no_extension}.exe"
+
+# Optimize argument for the compiler (use an empty string to show none).
+# Value: string
+optimize_flag = "-O2"
+
+# The compiler. Use the complete path if you haven't added it into the PATH.
+# Value: <string> command
+command = "g++"
+
+# The arguments for compiling
+# VARIABLES support (examples):
+#    {optimize_flag} --- -O2
+#    {file}          --- ./checking/tested.cpp
+#    {target}        --- ./checking/tested.exe
+args = ["-Wall", "{optimize_flag}", "{file}", "-o", "{target}"]
+
+[[compilation]]
+ext = ["c"]
+target = "{work_folder}/{filename_no_extension}.exe"
+optimize_flag = "-O2"
+command = "gcc"
+args = ["-Wall", "{optimize_flag}", "{file}", "-o", "{target}"]
+
+[[launch]]
+# If a file doesn't match any, it will be launched as an executable file
+# NOTE: While running data generator program, two arguments in decimal
+#       which shows the sequence number and the total cases
+#       are automatically appended after the arguments
+
+# Extension names to match
+# Value: array, of <string> extension names
+ext = ["py", "pyw", "pyc"]
+
+# Usually the interpreter or virtual machine.
+# Value: <string> command
+command = "python"
+
+# The arguments for launching
+# VARIABLES support (examples):
+#    {file} --- ./checking/data_generator.py
+args = ["{file}"]
+
+[[launch]]
+ext = ["js", "mjs"]
+command = "node"
+args = ["{file}"]

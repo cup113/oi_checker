@@ -1,0 +1,35 @@
+stateDiagram-v2
+    StartRunning : Start running launch suite
+    LaunchDG : Launch data generator
+    state c_launch_dg <<choice>>
+    LaunchTP : Launch tested program
+    state c_launch_tp <<choice>>
+    LaunchAC : Launch accepted program
+    state c_launch_ac <<choice>>
+    FilterFiles : Filter files
+    CompareFiles : Compare files
+    state c_compare_files <<choice>>
+    AC : Accepted
+    WA : Wrong Answer
+    TLE : Time Limit Exceeded
+    UK : Unknown
+
+    [*] --> StartRunning
+    StartRunning --> LaunchDG
+    LaunchDG --> c_launch_dg
+    c_launch_dg --> LaunchTP : Successful
+    c_launch_dg --> UK : Failed
+    LaunchTP --> c_launch_tp
+    c_launch_tp --> TLE : Failed(TLE)
+    c_launch_tp --> LaunchAC : Successful
+    LaunchAC --> c_launch_ac
+    c_launch_ac --> FilterFiles : Successful
+    c_launch_ac --> UK : Failed
+    FilterFiles --> CompareFiles
+    CompareFiles --> c_compare_files
+    c_compare_files --> AC : Same
+    c_compare_files --> WA : Different
+    AC --> [*]
+    WA --> [*]
+    TLE --> [*]
+    UK --> [*]
