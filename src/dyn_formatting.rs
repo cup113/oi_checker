@@ -1,15 +1,62 @@
 //! A module provides dynamic formatting like Python.
-//! Only support {key} (value is a string).
-//! Escape like '{{' or '}}'.
 
 use crate::checker_error::{CheckerError, Stage};
 use std::collections::HashMap;
 
+/// Simple, dynamic, Python-styled string formatting (Only support `String`,
+/// `{key}` patterns ).
+///
+/// Escape like `{{` or `}}`.
+///
+/// # Errors
+///
+/// 1. Raise `CheckerError::ArgFormattingKeyError` while the key in the brackets
+///    is not found.
+/// 2. Raise `CheckerError::ArgFormattingTokenError` while there is any
+///    unmatched bracket (`{` or `}`)
 pub fn dynamic_format(
     pattern: &str,
     dictionary: &HashMap<&str, &str>,
     stage: Stage,
 ) -> Result<String, CheckerError> {
+    use CheckerError::*;
+    use InnerError::*;
+    _dynamic_format(pattern, dictionary).map_err(|e| {
+        if let KeyError { pattern, key, pos } = e {
+            ArgFormattingKeyError {
+                stage,
+                pattern,
+                key,
+                pos,
+            }
+        } else if let TokenError { pattern, desc, pos } = e {
+            ArgFormattingTokenError {
+                stage,
+                pattern,
+                desc,
+                pos,
+            }
+        } else {
+            unreachable!();
+        }
+    })
+}
+
+#[derive(Debug)]
+enum InnerError {
+    TokenError {
+        pattern: String,
+        desc: String,
+        pos: usize,
+    },
+    KeyError {
+        pattern: String,
+        key: String,
+        pos: usize,
+    },
+}
+
+fn _dynamic_format(pattern: &str, dictionary: &HashMap<&str, &str>) -> Result<String, InnerError> {
     if pattern.find('{') == None && pattern.find('}') == None {
         return Ok(pattern.to_string());
     }
@@ -40,10 +87,10 @@ pub fn dynamic_format(
                     match dictionary.get(key.as_str()) {
                         Some(s) => ans.push_str(s),
                         None => {
-                            return Err(CheckerError::ArgFormattingKeyError {
-                                stage,
-                                pattern: pattern.to_owned(),
+                            return Err(InnerError::KeyError {
+                                pattern: pattern.to_string(),
                                 key,
+                                pos: last_left_bracket + 1,
                             })
                         }
                     };
@@ -65,17 +112,17 @@ pub fn dynamic_format(
     }
 
     if on_left_bracket {
-        return Err(CheckerError::ArgFormattingTokenError {
-            stage,
-            pattern: pattern.to_owned(),
-            msg: format!("Unmatched token '{{' at col {}", last_left_bracket + 1),
+        return Err(InnerError::TokenError {
+            pattern: pattern.to_string(),
+            desc: String::from("Unmatched token '{'"),
+            pos: last_left_bracket,
         });
     }
     if on_right_bracket {
-        return Err(CheckerError::ArgFormattingTokenError {
-            stage,
-            pattern: pattern.to_owned(),
-            msg: format!("Unmatched token '}}' at col {}", last_right_bracket + 1),
+        return Err(InnerError::TokenError {
+            pattern: pattern.to_string(),
+            desc: String::from("Unmatched token '}'"),
+            pos: last_right_bracket,
         });
     }
 
@@ -84,13 +131,13 @@ pub fn dynamic_format(
 
 #[cfg(test)]
 mod tests {
-    use super::dynamic_format;
-    use crate::checker_error::{CheckerError::*, Stage::*};
+    use super::InnerError::*;
+    use super::_dynamic_format;
     use std::collections::HashMap;
 
     macro_rules! dynamic_format {
         ($pattern: expr, $dict_list: expr) => {
-            dynamic_format(&String::from($pattern), &HashMap::from($dict_list), Compile)
+            _dynamic_format(&String::from($pattern), &HashMap::from($dict_list))
         };
     }
 
@@ -160,20 +207,17 @@ mod tests {
     #[test]
     fn test_key_error() {
         match dynamic_format!("{abc}", [("abd", "1")]) {
-            Err(ArgFormattingKeyError {
-                stage,
-                pattern,
-                key,
-            }) => {
-                assert_eq!(stage as isize, Compile as isize);
+            Err(KeyError { pattern, key, pos }) => {
                 assert_eq!(pattern, String::from("{abc}"));
                 assert_eq!(key, "abc");
+                assert_eq!(pos, 1);
             }
             _ => unreachable!(),
         }
         match dynamic_format!("234{ac}{ab}", [("ac", "1"), ("aa", ".")]) {
-            Err(ArgFormattingKeyError { key, .. }) => {
+            Err(KeyError { key, pos, .. }) => {
                 assert_eq!(key, "ab");
+                assert_eq!(pos, 8);
             }
             _ => unreachable!(),
         }
@@ -182,25 +226,19 @@ mod tests {
     #[test]
     fn test_token_error() {
         match dynamic_format!("{abc", [("abc", "1")]) {
-            Err(ArgFormattingTokenError {
-                stage,
-                pattern,
-                msg,
-            }) => {
-                assert_eq!(stage as isize, Compile as isize);
+            Err(TokenError { pattern, desc, pos }) => {
                 assert_eq!(pattern, String::from("{abc"));
-                assert!(msg.find("{").is_some());
-                assert!(msg.find("1").is_some())
+                assert!(desc.find("'{'").is_some());
+                assert_eq!(pos, 0);
             }
             _ => unreachable!(),
         }
         match dynamic_format!("{{a}}}324", []) {
-            Err(ArgFormattingTokenError { msg, .. }) => {
-                assert!(msg.find("}").is_some());
-                assert!(msg.find("6").is_some())
+            Err(TokenError { desc, pos, .. }) => {
+                assert!(desc.find("'}'").is_some());
+                assert_eq!(pos, 5);
             }
             _ => unreachable!(),
         }
     }
 }
-

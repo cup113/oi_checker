@@ -14,6 +14,13 @@ pub enum Stage {
 
 #[derive(Debug)]
 pub enum CheckerError {
+    CfgFileNotFoundError {
+        tried_files: [PathBuf; 3]
+    },
+    CfgFileReadingError {
+        err: io::Error,
+        file: PathBuf,
+    },
     CfgFileParsingError {
         err: toml::de::Error,
         file: PathBuf,
@@ -25,12 +32,14 @@ pub enum CheckerError {
     ArgFormattingTokenError {
         stage: Stage,
         pattern: String,
-        msg: String,
+        desc: String,
+        pos: usize,
     },
     ArgFormattingKeyError {
         stage: Stage,
         pattern: String,
         key: String,
+        pos: usize,
     },
     CleanFilesError {
         err: io::Error,

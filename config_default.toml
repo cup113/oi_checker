@@ -5,10 +5,20 @@
 # Note: All of the items in table `default` can be redefined by
 # command-line args.
 
+# TODO
+tested_program = "tested.cpp"
+accepted_program = "accepted.cpp"
+data_generator = "data_generator.py"
+
+# Number of test cases. Each starts a test suite.
+# Recommended: A number in {5, 10, 20, 25, 50, 100}
+# Value: u32, >=1
+test_cases = 20
+
 # Concurrent numbers.
 # (Should be implemented with multiprocessing only in Python because of the GIL)
 # Recommended: An integer between 1 and 16
-# Value: u32, >=1
+# Value: u32, >=1, <=255
 test_threads = 4
 
 # If the tested program doesn't finish in this duration (in milliseconds),
@@ -22,20 +32,10 @@ ac_timeout = 1000
 # Value: u32, >=1
 program_timeout = 3000
 
-# Number of test cases. Each starts a test suite.
-# Recommended: A number in {5, 10, 20, 25, 50, 100}
-# Value: u32, >=1
-test_cases = 20
-
 # The directory which stores data files and compiled files.
 # Recommended: Folder name, excludes "."
 # Value: string, a valid directory name
 working_directory = "checking"
-
-# TODO
-tested_program = "tested.cpp"
-accepted_program = "accepted.cpp"
-data_generator = "data_generator.py"
 
 # Explanation ("related files" means one input file and two output files):
 # 1. "ac"

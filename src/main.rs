@@ -21,6 +21,7 @@ impl OIChecker {
 
     fn run(&mut self) -> Result<(), CheckerError> {
         // TODO
+        config::get_config();
         todo!();
     }
 }
