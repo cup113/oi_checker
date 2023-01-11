@@ -35,7 +35,7 @@ pub fn parse_config_file() -> Result<Config, CheckerError> {
     let config = fs::read_to_string(config_file.as_path()).map_err(|err| {
         CheckerError::CfgFileReadingError {
             err,
-            file: config_file.clone(),
+            file: config_file.to_owned(),
         }
     })?;
     let config: Config =
@@ -46,13 +46,14 @@ pub fn parse_config_file() -> Result<Config, CheckerError> {
     Ok(config)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Config {
     default: DefaultConfig,
     compilation: Vec<CompilationConfig>,
+    launch: Vec<LaunchConfig>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct DefaultConfig {
     tested_program: PathBuf,
     accepted_program: PathBuf,
@@ -67,7 +68,7 @@ pub struct DefaultConfig {
     diff_tool: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct CompilationConfig {
     ext: Vec<String>,
     target: String,
@@ -76,7 +77,7 @@ pub struct CompilationConfig {
     args: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct LaunchConfig {
     ext: Vec<String>,
     command: String,

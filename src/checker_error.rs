@@ -59,7 +59,7 @@ impl CheckerError {
     }
 
     pub fn destruct(&self) -> ! {
-        eprintln!("{}", self);
+        eprintln!("{:?}", self); // TODO
         process::exit(self.get_exit_code());
     }
 }
