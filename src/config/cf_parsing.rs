@@ -1,9 +1,12 @@
+//! Config file parsing module.
+
 use crate::checker_error::CheckerError;
 use serde::Deserialize;
 use std::{env, fs, path::PathBuf};
 use toml;
 
-pub fn parse_config_file() -> Result<Config, CheckerError> {
+/// Parse the config file.
+pub fn parse_config_file() -> Result<(Config, PathBuf), CheckerError> {
     let program_dir = env::current_exe()
         .expect("Can't get env::current_exe")
         .parent()
@@ -41,45 +44,49 @@ pub fn parse_config_file() -> Result<Config, CheckerError> {
     let config: Config =
         toml::from_str(&config).map_err(|err| CheckerError::CfgFileParsingError {
             err,
-            file: config_file,
+            file: config_file.to_owned(),
         })?;
-    Ok(config)
+    Ok((config, config_file))
 }
 
+/// Main configuration of config file
 #[derive(Deserialize, Debug)]
 pub struct Config {
-    default: DefaultConfig,
-    compilation: Vec<CompilationConfig>,
-    launch: Vec<LaunchConfig>,
+    pub default: DefaultConfig,
+    pub compilation: Vec<CompilationConfig>,
+    pub launch: Vec<LaunchConfig>,
 }
 
+/// `default` field in toml file
 #[derive(Deserialize, Debug)]
 pub struct DefaultConfig {
-    tested_program: PathBuf,
-    accepted_program: PathBuf,
-    data_generator: PathBuf,
-    test_cases: u32,
-    test_threads: u32,
-    ac_timeout: u32,
-    program_timeout: u32,
-    working_directory: PathBuf,
-    auto_remove_files: String,
-    output_filters: Vec<String>,
-    diff_tool: Vec<String>,
+    pub tested_program: PathBuf,
+    pub accepted_program: PathBuf,
+    pub data_generator: PathBuf,
+    pub test_cases: u32,
+    pub test_threads: u32,
+    pub ac_timeout: u64,
+    pub program_timeout: u64,
+    pub working_directory: PathBuf,
+    pub auto_remove_files: String,
+    pub output_filters: Vec<String>,
+    pub diff_tool: Vec<String>,
 }
 
+/// `compile` field in toml file
 #[derive(Deserialize, Debug)]
 pub struct CompilationConfig {
-    ext: Vec<String>,
-    target: String,
-    optimize_flag: String,
-    command: String,
-    args: Vec<String>,
+    pub ext: Vec<String>,
+    pub target: String,
+    pub optimize_flag: String,
+    pub command: String,
+    pub args: Vec<String>,
 }
 
+/// `launch` field in toml file
 #[derive(Deserialize, Debug)]
 pub struct LaunchConfig {
-    ext: Vec<String>,
-    command: String,
-    args: Vec<String>,
+    pub ext: Vec<String>,
+    pub command: String,
+    pub args: Vec<String>,
 }

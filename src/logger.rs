@@ -64,7 +64,7 @@ impl Logger {
     fn print_log<T: Display + ?Sized>(&self, level: &Level, content: &T) {
         if level.as_value() >= self.min_level.as_value() {
             println!(
-                "{0:>3} {1:^7} [{2:^9}]: {3}",
+                "{0:>3} {1:^7} [{2:^6}]: {3}",
                 self.start.elapsed().as_millis(),
                 level.to_str(),
                 self.name,

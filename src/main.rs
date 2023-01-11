@@ -1,3 +1,5 @@
+//! #TODO doc
+
 mod checker_error;
 mod compilation;
 mod config;
@@ -19,9 +21,12 @@ impl OIChecker {
         Self {}
     }
 
+    /// Main function, run the checker
     fn run(&mut self) -> Result<(), CheckerError> {
         // TODO
+        let logger = logger::Logger::new(String::from("ROOT"), logger::Level::Info);
         let config = config::get_config()?;
+        logger.info("配置读取成功！");
         todo!();
     }
 }

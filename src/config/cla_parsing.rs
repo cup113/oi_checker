@@ -1,3 +1,5 @@
+//! Command-line argument parser.
+
 use clap::{
     builder::{
         IntoResettable, NonEmptyStringValueParser, PathBufValueParser, RangedU64ValueParser,
@@ -8,6 +10,7 @@ use clap::{
 };
 use std::path::PathBuf;
 
+/// Parse command-line arguments
 pub fn parse_cla() -> ClaConfig {
     let app = Command::new(env!("CARGO_PKG_NAME"))
         .about("An OI Checker. To get more information, please see README.html")
@@ -52,14 +55,14 @@ pub fn parse_cla() -> ClaConfig {
             "ac-timeout",
             'm',
             "MILLISECONDS",
-            RangedU64ValueParser::<u32>::new().range(1..),
+            RangedU64ValueParser::<u64>::new().range(1..),
         ))
         .arg(make_arg(
             "program-timeout",
             "program-timeout",
             'e',
             "MILLISECONDS",
-            RangedU64ValueParser::<u32>::new().range(1..),
+            RangedU64ValueParser::<u64>::new().range(1..),
         ))
         .arg(make_arg(
             "working-directory",
@@ -72,8 +75,8 @@ pub fn parse_cla() -> ClaConfig {
             "auto-remove-files",
             "auto-remove-files",
             'u',
-            "AC|Always|Never",
-            ["AC", "Always", "Never"],
+            "ac|always|never",
+            ["ac", "always", "never"],
         ))
         .arg(
             Arg::new("output-filters")
@@ -107,8 +110,8 @@ pub fn parse_cla() -> ClaConfig {
     let data_generator = get_one!("data-generator", PathBuf);
     let test_cases = get_one!("test-cases", u32);
     let test_threads = get_one!("test-threads", u32);
-    let ac_timeout = get_one!("ac-timeout", u32);
-    let program_timeout = get_one!("program-timeout", u32);
+    let ac_timeout = get_one!("ac-timeout", u64);
+    let program_timeout = get_one!("program-timeout", u64);
     let working_directory = get_one!("working-directory", PathBuf);
     let auto_remove_files = get_one!("auto-remove-files", String);
     let output_filters = matches
@@ -138,21 +141,23 @@ pub fn parse_cla() -> ClaConfig {
     }
 }
 
+/// Command line arguments configuration.
 #[derive(Debug)]
 pub struct ClaConfig {
-    tested_program: Option<PathBuf>,
-    accepted_program: Option<PathBuf>,
-    data_generator: Option<PathBuf>,
-    test_cases: Option<u32>,
-    test_threads: Option<u32>,
-    ac_timeout: Option<u32>,
-    program_timeout: Option<u32>,
-    working_directory: Option<PathBuf>,
-    auto_remove_files: Option<String>,
-    output_filters: Option<Vec<String>>,
-    diff_tool: Option<Vec<String>>,
+    pub tested_program: Option<PathBuf>,
+    pub accepted_program: Option<PathBuf>,
+    pub data_generator: Option<PathBuf>,
+    pub test_cases: Option<u32>,
+    pub test_threads: Option<u32>,
+    pub ac_timeout: Option<u64>,
+    pub program_timeout: Option<u64>,
+    pub working_directory: Option<PathBuf>,
+    pub auto_remove_files: Option<String>,
+    pub output_filters: Option<Vec<String>>,
+    pub diff_tool: Option<Vec<String>>,
 }
 
+/// Make an argument for most case to reuse the code.
 fn make_arg(
     id: &'static str,
     long: &'static str,
@@ -169,4 +174,6 @@ fn make_arg(
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    // TODO make tests
+}

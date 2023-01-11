@@ -5,6 +5,7 @@
 use std::{fmt::Display, io, path::PathBuf, process};
 use toml;
 
+/// Which stage the error occurs
 #[derive(Debug)]
 pub enum Stage {
     Compile,
@@ -12,10 +13,11 @@ pub enum Stage {
     LaunchTested,
 }
 
+/// All error variants in OI Checker
 #[derive(Debug)]
 pub enum CheckerError {
     CfgFileNotFoundError {
-        tried_files: [PathBuf; 3]
+        tried_files: [PathBuf; 3],
     },
     CfgFileReadingError {
         err: io::Error,
@@ -24,6 +26,10 @@ pub enum CheckerError {
     CfgFileParsingError {
         err: toml::de::Error,
         file: PathBuf,
+    },
+    CfgIntegrateError {
+        msg: String,
+        file_source: PathBuf,
     },
     CompileError {
         file: PathBuf,
@@ -54,10 +60,12 @@ impl Display for CheckerError {
 }
 
 impl CheckerError {
+    /// Get the exit code of each specific error type
     pub fn get_exit_code(&self) -> i32 {
         todo!() // TODO
     }
 
+    /// Print the error message to `stderr` and exit with the provided code
     pub fn destruct(&self) -> ! {
         eprintln!("{:?}", self); // TODO
         process::exit(self.get_exit_code());
