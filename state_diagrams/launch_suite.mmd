@@ -1,18 +1,18 @@
 stateDiagram-v2
-    StartRunning : Start running launch suite
-    LaunchDG : Launch data generator
+    StartRunning : ❌Start running launch suite
+    LaunchDG : ❌Launch data generator
     state c_launch_dg <<choice>>
-    LaunchTP : Launch tested program
+    LaunchTP : ❌Launch tested program
     state c_launch_tp <<choice>>
-    LaunchAC : Launch accepted program
+    LaunchAC : ❌Launch accepted program
     state c_launch_ac <<choice>>
-    FilterFiles : Filter files
-    CompareFiles : Compare files
+    FilterFiles : ❌Filter files
+    CompareFiles : ❌Compare files
     state c_compare_files <<choice>>
-    AC : Accepted
-    WA : Wrong Answer
-    TLE : Time Limit Exceeded
-    UK : Unknown
+    AC : ❌Accepted
+    WA : ❌Wrong Answer
+    TLE : ❌Time Limit Exceeded
+    UK : ❌Unknown
 
     [*] --> StartRunning
     StartRunning --> LaunchDG

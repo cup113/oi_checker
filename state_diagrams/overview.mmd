@@ -1,14 +1,14 @@
 stateDiagram-v2
-    StartRunning : OI-Checker starts running
-    ParseCLA : Parse command-line arguments
+    StartRunning : ✅OI-Checker starts running
+    ParseCLA : ✅Parse command-line arguments
     state c_parse_cla <<choice>>
-    ParseCF : Parse config file
-    GenerateCfg : Generate config
-    CompileRF : Compile related files
+    ParseCF : ✅Parse config file
+    GenerateCfg : ✅Generate config
+    CompileRF : ❌Compile related files
     state c_compile_rf <<choice>>
-    LaunchSuite : Launch suite *
-    ReportTS : Report total score
-    CleanGF : Clean generated files
+    LaunchSuite : ❌Launch suite *
+    ReportTS : ❌Report total score
+    CleanGF : ❌Clean generated files
 
     [*] --> StartRunning
     StartRunning --> ParseCLA

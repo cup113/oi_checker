@@ -2,7 +2,7 @@
 //!
 //! Also provide display & exit code
 
-use std::{fmt::Display, io, path::PathBuf, process};
+use std::{fmt::Display, io, path::PathBuf, process, ffi::OsString};
 use toml;
 
 /// Which stage the error occurs
@@ -16,6 +16,9 @@ pub enum Stage {
 /// All error variants in OI Checker
 #[derive(Debug)]
 pub enum CheckerError {
+    OsStrUtf8Error {
+        s: OsString
+    },
     CfgFileNotFoundError {
         tried_files: [PathBuf; 3],
     },

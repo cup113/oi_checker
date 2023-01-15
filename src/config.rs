@@ -1,9 +1,10 @@
 //! Parse config (command-line & file)
 
-mod cf_parsing;
+pub mod cf_parsing;
 mod cla_parsing;
 
 use crate::CheckerError;
+use crate::compilation::CompilationConfig;
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 // Get the main configuration
@@ -34,15 +35,23 @@ pub fn get_config() -> Result<Config, CheckerError> {
             })
         }
     };
-    let output_filters: Vec<OutputFilter> = get_default!(output_filters)
-        .into_iter()
-        .map(|filter| match filter.as_str() {
-            "strip-trailing-whitespace" => OutputFilter::StripTrailingWhitespace,
-            "strip-trailing-empty-lines" => OutputFilter::StripTrailingEmptyLines,
-            "strip-all-whitespace" => OutputFilter::StripAllWhitespace,
-            _ => unreachable!(),
-        })
-        .collect();
+    let output_filters: Vec<OutputFilter> = {
+        let mut output_filters = Vec::new();
+        for filter in get_default!(output_filters) {
+            output_filters.push(match filter.as_str() {
+                "strip-trailing-whitespace" => OutputFilter::StripTrailingWhitespace,
+                "strip-trailing-empty-lines" => OutputFilter::StripTrailingEmptyLines,
+                "strip-all-whitespace" => OutputFilter::StripAllWhitespace,
+                f => {
+                    return Err(CheckerError::CfgIntegrateError {
+                        msg: format!("filter {} is not defined in field `default.filters`", f),
+                        file_source: cf_file.to_owned(),
+                    })
+                }
+            });
+        }
+        output_filters
+    };
     let diff_tool = DiffTool::try_from(get_default!(diff_tool)).map_err(|msg: String| {
         CheckerError::CfgIntegrateError {
             msg,
@@ -163,25 +172,6 @@ impl TryFrom<Vec<String>> for DiffTool {
             "diff" => Ok(DiffTool::Diff),
             "custom" => Ok(DiffTool::Custom(value[1..].to_vec())),
             r => return Err(format!("Rule {} is not defined.", r)),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct CompilationConfig {
-    pub target: String,
-    pub optimize_flag: String,
-    pub command: String,
-    pub args: Vec<String>,
-}
-
-impl From<cf_parsing::CompilationConfig> for CompilationConfig {
-    fn from(value: cf_parsing::CompilationConfig) -> Self {
-        Self {
-            target: value.target,
-            optimize_flag: value.optimize_flag,
-            command: value.command,
-            args: value.args,
         }
     }
 }

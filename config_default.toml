@@ -4,10 +4,16 @@
 [default]
 # Note: All of the items in table `default` can be redefined by
 # command-line args.
+# The first three are usually redefined.
 
-# TODO
+# The program which will be tested.
+# Value: String(Path)
 tested_program = "tested.cpp"
+
+# The program which output correct answers.
 accepted_program = "accepted.cpp"
+
+# The program which generate data.
 data_generator = "data_generator.py"
 
 # Number of test cases. Each starts a test suite.
@@ -103,9 +109,10 @@ args = ["-Wall", "{optimize_flag}", "{file}", "-o", "{target}"]
 
 [[launch]]
 # If a file doesn't match any, it will be launched as an executable file
-# NOTE: While running data generator program, two arguments in decimal
-#       which shows the sequence number and the total cases
-#       are automatically appended after the arguments
+# NOTE:
+# While running data generator program and accepted program, two arguments
+# in decimal which shows the sequence number and the total cases are
+# automatically appended after the arguments.
 
 # Extension names to match
 # Value: array, of <string> extension names

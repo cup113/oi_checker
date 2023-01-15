@@ -6,6 +6,7 @@ mod config;
 mod dyn_formatting;
 mod launch;
 mod logger;
+mod path_lib;
 
 use checker_error::CheckerError;
 
