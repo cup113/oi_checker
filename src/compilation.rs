@@ -5,9 +5,8 @@ use crate::config::cf_parsing;
 use crate::dyn_formatting;
 use crate::path_lib::TryToString;
 use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 #[derive(Debug)]
 pub struct CompilationConfig {
@@ -29,10 +28,10 @@ impl From<cf_parsing::CompilationConfig> for CompilationConfig {
 }
 
 impl CompilationConfig {
-    fn run(&self, work_folder: PathBuf, file: PathBuf) -> Result<(), CheckerError> {
+    pub fn run(&self, work_folder: PathBuf, file: PathBuf) -> Result<(), CheckerError> {
         let filename_no_extension = {
-            if let Some(prefix) = file.extension() { // FIXME not ext
-                prefix
+            if let Some(stem) = file.file_stem() {
+                stem
             } else {
                 file.as_os_str()
             }
@@ -40,17 +39,34 @@ impl CompilationConfig {
         // to give the &str longer lifetime
         let s_filename_no_extension = filename_no_extension.try_to_string()?;
         let s_work_folder = work_folder.try_to_string()?;
-        let s_filename = file.try_to_string()?;
-        let dict: HashMap<&str, &str> = HashMap::from([
+        let s_filename = file.file_name().unwrap().try_to_string()?; // FIXME
+        let s_file = file.try_to_string()?;
+        let target_dict: HashMap<&str, &str> = HashMap::from([
             ("work_folder", s_work_folder.as_str()),
             ("filename_no_extension", s_filename_no_extension.as_str()),
             ("filename", s_filename.as_str()),
         ]);
+        let target = dyn_formatting::dynamic_format(&self.target, &target_dict, Stage::Compile)?;
+        let args_dict: HashMap<&str, &str> = HashMap::from([
+            ("optimize_flag", self.optimize_flag.as_str()),
+            ("file", s_file.as_str()),
+            ("target", target.as_str()),
+        ]);
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());
         for arg in self.args.iter() {
-            args.push(dyn_formatting::dynamic_format(arg, &dict, Stage::Compile)?);
+            args.push(dyn_formatting::dynamic_format(
+                arg,
+                &args_dict,
+                Stage::Compile,
+            )?);
         }
-        Command::new(&self.command).args(args).output();
+        println!("{:?}", args);
+        let output = Command::new(&self.command)
+            .stderr(Stdio::inherit())
+            .args(args)
+            .output();
+        println!("{:?}", output);
+        todo!();
         Ok(())
     }
 }

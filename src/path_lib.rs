@@ -1,6 +1,9 @@
+//! A library provides UTF-8 path parsing and more utilities.
+//!
+//! Return error while detecting non UTF-8 characters.
+
 use crate::CheckerError;
 use std::{ffi::OsStr, path::PathBuf};
-
 pub trait TryToString {
     fn try_to_string(&self) -> Result<String, CheckerError>;
 }
@@ -20,4 +23,7 @@ impl TryToString for PathBuf {
     fn try_to_string(&self) -> Result<String, CheckerError> {
         self.as_os_str().try_to_string()
     }
+}
+
+fn file_prefix() {
 }

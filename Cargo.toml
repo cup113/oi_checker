@@ -1,6 +1,6 @@
 [package]
 name = "oi_checker"
-version = "0.1.0-dev20230115.5"
+version = "0.1.0-dev20230117.6"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

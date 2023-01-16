@@ -3,8 +3,8 @@
 pub mod cf_parsing;
 mod cla_parsing;
 
-use crate::CheckerError;
 use crate::compilation::CompilationConfig;
+use crate::CheckerError;
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 // Get the main configuration
@@ -24,31 +24,20 @@ pub fn get_config() -> Result<Config, CheckerError> {
     let ac_timeout = Duration::from_millis(get_default!(ac_timeout).into());
     let program_timeout = Duration::from_millis(get_default!(program_timeout).into());
     let working_directory = get_default!(working_directory);
-    let auto_remove_files = match get_default!(auto_remove_files).as_str() {
-        "ac" => AutoRemoveFiles::AC,
-        "always" => AutoRemoveFiles::Always,
-        "never" => AutoRemoveFiles::Never,
-        s => {
-            return Err(CheckerError::CfgIntegrateError {
-                msg: format!("`{}` is not allowed in field `auto_remove_files`", s),
-                file_source: cf_file.to_owned(),
-            })
-        }
-    };
+    let auto_remove_files = AutoRemoveFiles::try_from(get_default!(auto_remove_files).as_str())
+        .map_err(|msg| CheckerError::CfgIntegrateError {
+            msg,
+            file_source: cf_file.to_owned(),
+        })?;
     let output_filters: Vec<OutputFilter> = {
         let mut output_filters = Vec::new();
         for filter in get_default!(output_filters) {
-            output_filters.push(match filter.as_str() {
-                "strip-trailing-whitespace" => OutputFilter::StripTrailingWhitespace,
-                "strip-trailing-empty-lines" => OutputFilter::StripTrailingEmptyLines,
-                "strip-all-whitespace" => OutputFilter::StripAllWhitespace,
-                f => {
-                    return Err(CheckerError::CfgIntegrateError {
-                        msg: format!("filter {} is not defined in field `default.filters`", f),
-                        file_source: cf_file.to_owned(),
-                    })
+            output_filters.push(OutputFilter::try_from(filter.as_str()).map_err(|msg| {
+                CheckerError::CfgIntegrateError {
+                    msg,
+                    file_source: cf_file.to_owned(),
                 }
-            });
+            })?);
         }
         output_filters
     };
@@ -116,7 +105,7 @@ pub struct ExtensionRules<T> {
 
 impl<T> ExtensionRules<T> {
     /// Get the rule of the given extension. Return `None` if not found.
-    fn get_rule(&self, key: String) -> Option<&T> {
+    pub fn get_rule(&self, key: String) -> Option<&T> {
         self.mapping.get(&key).map(|i| self.store.get(*i).unwrap())
     }
 }
@@ -142,11 +131,41 @@ pub enum AutoRemoveFiles {
     Never,
 }
 
+impl TryFrom<&str> for AutoRemoveFiles {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "ac" => Ok(Self::AC),
+            "always" => Ok(Self::Always),
+            "never" => Ok(Self::Never),
+            s => Err(format!(
+                "`{}` is not allowed in field `auto_remove_files`",
+                s
+            )),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum OutputFilter {
     StripTrailingWhitespace,
     StripTrailingEmptyLines,
     StripAllWhitespace,
+}
+
+impl TryFrom<&str> for OutputFilter {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "strip-trailing-whitespace" => Ok(Self::StripTrailingWhitespace),
+            "strip-trailing-empty-lines" => Ok(Self::StripTrailingEmptyLines),
+            "strip-all-whitespace" => Ok(Self::StripAllWhitespace),
+            f => Err(format!(
+                "filter {} is not defined in field `default.filters`",
+                f
+            )),
+        }
+    }
 }
 
 #[derive(Debug)]
