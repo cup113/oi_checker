@@ -2,11 +2,17 @@
 //!
 //! Also provide display & exit code
 
-use std::{ffi::OsString, fmt::Display, io, path::PathBuf, process};
+use std::{
+    ffi::OsString,
+    fmt::{Display, Write},
+    io,
+    path::PathBuf,
+    process,
+};
 use toml;
 
 /// Which stage the error occurs
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Stage {
     CompileDG,
     CompileAC,
@@ -66,8 +72,48 @@ pub enum CheckerError {
 }
 
 impl Display for CheckerError {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!() // TODO
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO
+        use CheckerError::*;
+        match self {
+            OsStrUtf8Error { s } => {
+                write!(f, "Invalid non-UTF-8 string: {}.", s.to_string_lossy())
+            }
+            CfgFileNotFoundError { tried_files } => {
+                write!(
+                    f,
+                    "Cannot found config file. We have tried {}, {} and {}.",
+                    tried_files[0].display(),
+                    tried_files[1].display(),
+                    tried_files[2].display(),
+                )
+            }
+            CfgFileReadingError { err, file } => todo!(),
+            CfgFileParsingError { err, file } => {
+                write!(f, "Parse config file ({}) failed:\n{}", file.display(), err)
+            }
+            CfgIntegrateError { msg, file_source } => todo!(),
+            CreateWorkDirError { err, dir } => todo!(),
+            CompileError {
+                command,
+                args,
+                file,
+                msg,
+            } => todo!(),
+            ArgFormattingTokenError {
+                stage,
+                pattern,
+                desc,
+                pos,
+            } => todo!(),
+            ArgFormattingKeyError {
+                stage,
+                pattern,
+                key,
+                pos,
+            } => todo!(),
+            CleanFilesError { err, file } => todo!(),
+        }
     }
 }
 
@@ -91,7 +137,7 @@ impl CheckerError {
 
     /// Print the error message to `stderr` and exit with the provided code
     pub fn destruct(&self) -> ! {
-        eprintln!("{:?}", self); // TODO
+        eprintln!("{}", self);
         process::exit(self.get_exit_code());
     }
 }

@@ -1,0 +1,133 @@
+use crate::checker_error::{CheckerError, Stage};
+use crate::config::cf_parsing;
+use crate::TryToString;
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::mpsc;
+use std::time::Duration;
+use std::{fs, io};
+
+#[derive(Debug)]
+pub struct LaunchConfig {
+    pub command: Option<String>,
+    pub args: Vec<String>,
+}
+
+#[derive(Debug)]
+pub enum LaunchResult {
+    Success(Duration),
+    Timeout(Duration),
+    IOError(io::Error),
+}
+
+impl From<cf_parsing::LaunchConfig> for LaunchConfig {
+    fn from(value: cf_parsing::LaunchConfig) -> Self {
+        Self {
+            command: Some(value.command),
+            args: value.args,
+        }
+    }
+}
+
+impl Default for LaunchConfig {
+    fn default() -> Self {
+        Self {
+            command: None,
+            args: Vec::new(),
+        }
+    }
+}
+
+impl LaunchConfig {
+    fn get_args(&self, file: &PathBuf, stage: Stage) -> Result<Vec<String>, CheckerError> {
+        use crate::dyn_formatting;
+        use std::collections::HashMap;
+        // to give the &str longer lifetime
+        let s_file = file.try_to_string()?;
+        let args_dict: HashMap<&str, &str> = HashMap::from([("file", s_file.as_str())]);
+        let mut args: Vec<String> = Vec::with_capacity(self.args.len());
+        for arg in self.args.iter() {
+            args.push(dyn_formatting::dynamic_format(arg, &args_dict, stage)?);
+        }
+        Ok(args)
+    }
+
+    fn run_inner(
+        mut command: Command,
+        input_file: &String,
+        output_file: &String,
+        tx: mpsc::Sender<Result<(), io::Error>>,
+    ) {
+        use std::io::Write;
+        let input_buf = match fs::read(input_file) {
+            Ok(input_buf) => input_buf,
+            Err(e) => {
+                let _ = tx.send(Ok(()));
+                let _ = tx.send(Err(e));
+                return;
+            }
+        };
+        let input_buf = input_buf.as_slice();
+        let mut child = match command.spawn() {
+            Ok(output) => output,
+            Err(e) => {
+                let _ = tx.send(Ok(()));
+                let _ = tx.send(Err(e));
+                return;
+            }
+        };
+        let mut child_stdin = child.stdin.take().expect("Stdin not piped");
+        let _ = child_stdin.write(input_buf);
+        let output = match child.wait_with_output() {
+            Ok(output) => output,
+            Err(e) => {
+                let _ = tx.send(Err(e));
+                return;
+            }
+        };
+        let _ = fs::write(output_file, output.stdout);
+        let _ = tx.send(Ok(()));
+    }
+
+    pub fn run(
+        &self,
+        file: &PathBuf,
+        stage: Stage,
+        extra_args: Vec<String>,
+        timeout: Duration,
+        input_file: String,
+        output_file: String,
+    ) -> Result<LaunchResult, CheckerError> {
+        use std::process::Stdio;
+        use std::thread;
+        use std::time::Instant;
+        let args = {
+            let mut args = self.get_args(file, stage)?;
+            args.extend(extra_args);
+            args
+        };
+        let program = self.command.clone().unwrap_or(file.try_to_string()?);
+        let (tx, rx) = mpsc::channel();
+        let command: Command = {
+            let mut command = Command::new(program);
+            command
+                .args(args)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped());
+            command
+        };
+        thread::spawn(move || {
+            Self::run_inner(command, &input_file, &output_file, tx);
+        });
+        let _ = rx.recv();
+        let start = Instant::now();
+        let received = rx.recv_timeout(timeout);
+        if let Err(_) = received {
+            Ok(LaunchResult::Timeout(start.elapsed()))
+        } else if let Ok(Err(err)) = received {
+            Ok(LaunchResult::IOError(err))
+        } else {
+            Ok(LaunchResult::Success(start.elapsed()))
+        }
+    }
+}

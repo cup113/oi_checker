@@ -3,7 +3,7 @@
 use crate::checker_error::{CheckerError, Stage};
 use crate::config::cf_parsing;
 use crate::dyn_formatting;
-use crate::path_lib::TryToString;
+use crate::TryToString;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -28,12 +28,12 @@ impl From<cf_parsing::CompilationConfig> for CompilationConfig {
 }
 
 impl CompilationConfig {
-    pub fn run(
+    fn get_args(
         &self,
         work_folder: &PathBuf,
         file: &PathBuf,
         stage: Stage,
-    ) -> Result<(), CheckerError> {
+    ) -> Result<Vec<String>, CheckerError> {
         let filename_no_extension = {
             if let Some(stem) = file.file_stem() {
                 stem
@@ -62,9 +62,19 @@ impl CompilationConfig {
             args.push(dyn_formatting::dynamic_format(
                 arg,
                 &args_dict,
-                Stage::CompileDG,
+                stage,
             )?);
         }
+        Ok(args)
+    }
+
+    pub fn run(
+        &self,
+        work_folder: &PathBuf,
+        file: &PathBuf,
+        stage: Stage,
+    ) -> Result<(), CheckerError> {
+        let args = self.get_args(work_folder, file, stage)?;
         let output = Command::new(&self.command)
             .stderr(Stdio::inherit())
             .args(args.clone())
@@ -86,9 +96,4 @@ impl CompilationConfig {
             })
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    // TODO
 }
