@@ -1,6 +1,6 @@
 # OI-Checker README
 
-可配置的 OI 自动对拍器。
+可灵活配置的 OI 自动对拍器。
 
 项目处于开发阶段，可能会发生破坏性改动。
 
@@ -10,8 +10,38 @@
 
 ## Usage
 
+```
+Usage: oi_checker.exe [OPTIONS]
 
+Options:
+  -t, --tested <FILE>
 
-## config
+  -a, --accepted <FILE>
 
+  -g, --generator <FILE>
 
+  -c, --cases <MILLISECONDS>
+
+  -r, --threads <NUMBER>
+
+  -m, --ac-timeout <MILLISECONDS>
+
+  -e, --program-timeout <MILLISECONDS>
+
+  -d, --working-dir <MILLISECONDS>
+
+  -u, --auto-remove-files <ac|always|never>
+          [possible values: ac, always, never]
+  -f, --output-filters <FILTERS>
+          [possible values: strip-trailing-whitespace, strip-trailing-empty-lines, strip-all-whitespace]
+  -i, --diff-tool <TOOL>
+
+  -h, --help
+          Print help information
+  -V, --version
+          Print version information
+```
+
+## Config
+
+详见`config_default.toml`。

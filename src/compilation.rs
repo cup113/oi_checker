@@ -1,4 +1,4 @@
-//! #TODO
+//! Compile program source files.
 
 use crate::checker_error::{CheckerError, Stage};
 use crate::config::cf_parsing;
@@ -28,7 +28,12 @@ impl From<cf_parsing::CompilationConfig> for CompilationConfig {
 }
 
 impl CompilationConfig {
-    pub fn run(&self, work_folder: PathBuf, file: PathBuf) -> Result<(), CheckerError> {
+    pub fn run(
+        &self,
+        work_folder: &PathBuf,
+        file: &PathBuf,
+        stage: Stage,
+    ) -> Result<(), CheckerError> {
         let filename_no_extension = {
             if let Some(stem) = file.file_stem() {
                 stem
@@ -39,14 +44,14 @@ impl CompilationConfig {
         // to give the &str longer lifetime
         let s_filename_no_extension = filename_no_extension.try_to_string()?;
         let s_work_folder = work_folder.try_to_string()?;
-        let s_filename = file.file_name().unwrap().try_to_string()?; // FIXME
+        let s_filename = file.file_name().unwrap_or_default().try_to_string()?;
         let s_file = file.try_to_string()?;
         let target_dict: HashMap<&str, &str> = HashMap::from([
             ("work_folder", s_work_folder.as_str()),
             ("filename_no_extension", s_filename_no_extension.as_str()),
             ("filename", s_filename.as_str()),
         ]);
-        let target = dyn_formatting::dynamic_format(&self.target, &target_dict, Stage::Compile)?;
+        let target = dyn_formatting::dynamic_format(&self.target, &target_dict, stage)?;
         let args_dict: HashMap<&str, &str> = HashMap::from([
             ("optimize_flag", self.optimize_flag.as_str()),
             ("file", s_file.as_str()),
@@ -57,16 +62,33 @@ impl CompilationConfig {
             args.push(dyn_formatting::dynamic_format(
                 arg,
                 &args_dict,
-                Stage::Compile,
+                Stage::CompileDG,
             )?);
         }
-        println!("{:?}", args);
         let output = Command::new(&self.command)
             .stderr(Stdio::inherit())
-            .args(args)
-            .output();
-        println!("{:?}", output);
-        todo!();
-        Ok(())
+            .args(args.clone())
+            .output()
+            .map_err(|e| CheckerError::CompileError {
+                command: self.command.to_owned(),
+                args: args.to_owned(),
+                file: file.to_owned(),
+                msg: e.to_string(),
+            })?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(CheckerError::CompileError {
+                command: self.command.to_owned(),
+                args: args.to_owned(),
+                file: file.to_owned(),
+                msg: format!("Compile failed: Compiler exited with {}", output.status),
+            })
+        }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // TODO
 }
