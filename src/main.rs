@@ -9,10 +9,13 @@ mod logging;
 mod path_lib;
 
 use std::path::PathBuf;
+use std::sync::mpsc;
+use std::time::Duration;
 
+use crate::checker_error::{CheckerError, Stage};
+use crate::launch::LaunchResult;
+use crate::logging::Logger;
 use crate::path_lib::TryToString;
-use checker_error::{CheckerError, Stage};
-use logging::Logger;
 
 fn main() {
     let mut oi_checker = OIChecker::new().unwrap_or_else(|err| err.destruct());
@@ -25,6 +28,7 @@ struct OIChecker {
 }
 
 impl OIChecker {
+    /// Get a new OIChecker. It should be generated once only.
     fn new() -> Result<Self, CheckerError> {
         use logging::Level::Info;
         let logger = Logger::new(String::from("OIChecker"), Info);
@@ -32,6 +36,7 @@ impl OIChecker {
         Ok(Self { logger, config })
     }
 
+    /// TODO doc
     fn try_compile(&self, program_ptr: *mut PathBuf, stage: Stage) -> Result<(), CheckerError> {
         let program = unsafe { (*program_ptr).to_owned() };
         let ext = if let Some(ext) = program.extension() {
@@ -63,6 +68,51 @@ impl OIChecker {
         Ok(())
     }
 
+    /// TODO doc
+    fn launch_one(
+        &self,
+        program: &PathBuf,
+        extra_args: Vec<String>,
+        input_file: &Option<PathBuf>,
+        output_file: &PathBuf,
+        stage: Stage,
+    ) -> LaunchResult {
+        let default_launch_rule = launch::LaunchConfig::default();
+        let launch_rule = if let Some(ext) = program.extension() {
+            self.config
+                .launch_rules
+                .get_rule(match ext.try_to_string() {
+                    Ok(ext) => ext,
+                    Err(e) => return LaunchResult::CheckerError(e),
+                })
+                .unwrap_or(&default_launch_rule)
+        } else {
+            &default_launch_rule
+        };
+        launch_rule.run(
+            program,
+            stage,
+            extra_args,
+            self.config.program_timeout,
+            input_file,
+            output_file,
+        )
+    }
+
+    /// TODO doc
+    fn launch_suite(&self, tx: mpsc::Sender<LaunchResult>) {
+        for i in 0..self.config.test_cases {
+            let dg_result = self.launch_one(
+                &self.config.data_generator,
+                Vec::from([i.to_string(), self.config.test_cases.to_string()]),
+                &None,
+                &PathBuf::from(format!("data{}.in", i)),
+                Stage::LaunchDG,
+            );
+            // TODO stdin should be option
+        }
+    }
+
     /// Main function, run the checker
     fn run(&mut self) -> Result<(), CheckerError> {
         use std::fs;
@@ -83,4 +133,16 @@ impl OIChecker {
         self.try_compile(tested_program_ptr, Stage::CompileTP)?;
         todo!(); // TODO
     }
+}
+
+struct LaunchSuiteResult {
+    index: u32,
+    inner: LaunchSuiteEnum,
+}
+
+enum LaunchSuiteEnum {
+    AC(Duration),
+    WA(Duration, PathBuf),
+    TLE(Duration),
+    UK(Duration, LaunchResult),
 }

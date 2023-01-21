@@ -47,12 +47,6 @@ pub enum CheckerError {
         err: io::Error,
         dir: PathBuf,
     },
-    CompileError {
-        command: String,
-        args: Vec<String>,
-        file: PathBuf,
-        msg: String,
-    },
     ArgFormattingTokenError {
         stage: Stage,
         pattern: String,
@@ -64,6 +58,18 @@ pub enum CheckerError {
         pattern: String,
         key: String,
         pos: usize,
+    },
+    CompileError {
+        command: String,
+        args: Vec<String>,
+        file: PathBuf,
+        msg: String,
+    },
+    LaunchError {
+        command: String,
+        args: Vec<String>,
+        file: PathBuf,
+        msg: String,
     },
     CleanFilesError {
         err: io::Error,
@@ -94,12 +100,6 @@ impl Display for CheckerError {
             }
             CfgIntegrateError { msg, file_source } => todo!(),
             CreateWorkDirError { err, dir } => todo!(),
-            CompileError {
-                command,
-                args,
-                file,
-                msg,
-            } => todo!(),
             ArgFormattingTokenError {
                 stage,
                 pattern,
@@ -111,6 +111,18 @@ impl Display for CheckerError {
                 pattern,
                 key,
                 pos,
+            } => todo!(),
+            CompileError {
+                command,
+                args,
+                file,
+                msg,
+            } => todo!(),
+            LaunchError {
+                command,
+                args,
+                file,
+                msg,
             } => todo!(),
             CleanFilesError { err, file } => todo!(),
         }
@@ -128,9 +140,10 @@ impl CheckerError {
             CfgFileParsingError { .. } => 19,
             CfgIntegrateError { .. } => 20,
             CreateWorkDirError { .. } => 21,
-            CompileError { .. } => 22,
-            ArgFormattingTokenError { .. } => 23,
-            ArgFormattingKeyError { .. } => 24,
+            ArgFormattingTokenError { .. } => 22,
+            ArgFormattingKeyError { .. } => 23,
+            CompileError { .. } => 24,
+            LaunchError { .. } => unreachable!(),
             CleanFilesError { .. } => 25,
         }
     }

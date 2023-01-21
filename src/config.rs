@@ -4,6 +4,7 @@ pub mod cf_parsing;
 mod cla_parsing;
 
 use crate::compilation::CompilationConfig;
+use crate::launch::LaunchConfig;
 use crate::CheckerError;
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 
@@ -191,21 +192,6 @@ impl TryFrom<Vec<String>> for DiffTool {
             "diff" => Ok(DiffTool::Diff),
             "custom" => Ok(DiffTool::Custom(value[1..].to_vec())),
             r => return Err(format!("Rule {} is not defined.", r)),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct LaunchConfig {
-    pub command: String,
-    pub args: Vec<String>,
-}
-
-impl From<cf_parsing::LaunchConfig> for LaunchConfig {
-    fn from(value: cf_parsing::LaunchConfig) -> Self {
-        Self {
-            command: value.command,
-            args: value.args,
         }
     }
 }

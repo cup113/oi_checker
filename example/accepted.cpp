@@ -1,1 +1,6 @@
-int main() { return 0; }
+#include <cstdio>
+
+int main() {
+    printf("Hello World!\n");
+    return 0;
+}

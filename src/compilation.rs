@@ -28,6 +28,14 @@ impl From<cf_parsing::CompilationConfig> for CompilationConfig {
 }
 
 impl CompilationConfig {
+    /// Get arguments of the compilation.
+    /// Return a tuple which means `(target_path, arguments)`
+    ///
+    /// # Error
+    ///
+    /// 1. `CheckerError::OsStrUtf8Error` when meet non-UTF-8 characters
+    /// 2. `CheckerError::CompileError` when compilation failed due to
+    ///    command not found or compiler exited with non-zero code.
     fn get_args(
         &self,
         work_folder: &PathBuf,
@@ -59,15 +67,12 @@ impl CompilationConfig {
         ]);
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());
         for arg in self.args.iter() {
-            args.push(dyn_formatting::dynamic_format(
-                arg,
-                &args_dict,
-                stage,
-            )?);
+            args.push(dyn_formatting::dynamic_format(arg, &args_dict, stage)?);
         }
         Ok((target, args))
     }
 
+    /// TODO doc
     pub fn run(
         &self,
         work_folder: &PathBuf,
