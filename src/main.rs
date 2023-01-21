@@ -100,17 +100,74 @@ impl OIChecker {
     }
 
     /// TODO doc
-    fn launch_suite(&self, tx: mpsc::Sender<LaunchResult>) {
-        for i in 0..self.config.test_cases {
-            let dg_result = self.launch_one(
-                &self.config.data_generator,
-                Vec::from([i.to_string(), self.config.test_cases.to_string()]),
-                &None,
-                &PathBuf::from(format!("data{}.in", i)),
-                Stage::LaunchDG,
-            );
-            // TODO stdin should be option
+    fn launch_suite(&self, index: u32) -> LaunchSuiteResult {
+        let data_file = PathBuf::from(format!("data{}.in", index));
+        let ac_out_file = PathBuf::from(format!("ac{}.out", index));
+        let tp_out_file = PathBuf::from(format!("tested{}.out", index));
+        let dg_result = self.launch_one(
+            &self.config.data_generator,
+            Vec::from([index.to_string(), self.config.test_cases.to_string()]),
+            &None,
+            &data_file,
+            Stage::LaunchDG,
+        );
+        let dg_handle = match dg_result {
+            LaunchResult::Timeout(_) => Some(String::from("Timeout")),
+            LaunchResult::IOError(e) => Some(format!("IO Error: {}", e)),
+            LaunchResult::CheckerError(e) => Some(format!("Checker Error: {}", e)),
+            LaunchResult::Success(_) => None,
+        };
+        if let Some(hint) = dg_handle {
+            return LaunchSuiteResult {
+                index,
+                inner: LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint)),
+            };
         }
+        let ac_result = self.launch_one(
+            &self.config.accepted_program,
+            Vec::from([index.to_string(), self.config.test_cases.to_string()]),
+            &Some(data_file.clone()),
+            &ac_out_file,
+            Stage::LaunchAC,
+        );
+        let ac_handle = match ac_result {
+            LaunchResult::Timeout(_) => Some(String::from("Timeout")),
+            LaunchResult::IOError(e) => Some(format!("IO Error: {}", e)),
+            LaunchResult::CheckerError(e) => Some(format!("Checker Error: {}", e)),
+            LaunchResult::Success(_) => None,
+        };
+        if let Some(hint) = ac_handle {
+            return LaunchSuiteResult {
+                index,
+                inner: LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint)),
+            };
+        }
+        let tp_result = self.launch_one(
+            &self.config.tested_program,
+            Vec::new(),
+            &Some(data_file.clone()),
+            &tp_out_file,
+            Stage::LaunchTP,
+        );
+        let tp_handle = match tp_result {
+            LaunchResult::Timeout(duration) => {
+                return LaunchSuiteResult {
+                    index,
+                    inner: LaunchSuiteEnum::TLE(duration),
+                }
+            }
+            LaunchResult::IOError(e) => Some(format!("IOError: {}", e)),
+            LaunchResult::CheckerError(e) => Some(format!("IOError: {}", e)),
+            LaunchResult::Success(_) => None,
+        };
+        if let Some(hint) = tp_handle {
+            return LaunchSuiteResult {
+                index,
+                inner: LaunchSuiteEnum::UK(format!("Launch tested program failed: {}", hint)),
+            };
+        }
+        todo!()
+        // TODO compare
     }
 
     /// Main function, run the checker
@@ -144,5 +201,5 @@ enum LaunchSuiteEnum {
     AC(Duration),
     WA(Duration, PathBuf),
     TLE(Duration),
-    UK(Duration, LaunchResult),
+    UK(String),
 }
