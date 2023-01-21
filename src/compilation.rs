@@ -33,7 +33,7 @@ impl CompilationConfig {
         work_folder: &PathBuf,
         file: &PathBuf,
         stage: Stage,
-    ) -> Result<Vec<String>, CheckerError> {
+    ) -> Result<(String, Vec<String>), CheckerError> {
         let filename_no_extension = {
             if let Some(stem) = file.file_stem() {
                 stem
@@ -65,7 +65,7 @@ impl CompilationConfig {
                 stage,
             )?);
         }
-        Ok(args)
+        Ok((target, args))
     }
 
     pub fn run(
@@ -73,8 +73,8 @@ impl CompilationConfig {
         work_folder: &PathBuf,
         file: &PathBuf,
         stage: Stage,
-    ) -> Result<(), CheckerError> {
-        let args = self.get_args(work_folder, file, stage)?;
+    ) -> Result<String, CheckerError> {
+        let (target, args) = self.get_args(work_folder, file, stage)?;
         let output = Command::new(&self.command)
             .stderr(Stdio::inherit())
             .args(args.clone())
@@ -86,7 +86,7 @@ impl CompilationConfig {
                 msg: e.to_string(),
             })?;
         if output.status.success() {
-            Ok(())
+            Ok(target)
         } else {
             Err(CheckerError::CompileError {
                 command: self.command.to_owned(),

@@ -8,65 +8,79 @@ mod launch;
 mod logging;
 mod path_lib;
 
-use checker_error::CheckerError;
-use logging::Logger;
+use std::path::PathBuf;
 
 use crate::path_lib::TryToString;
+use checker_error::{CheckerError, Stage};
+use logging::Logger;
 
 fn main() {
-    let mut oi_checker = OIChecker::new();
-    if let Err(e) = oi_checker.run() {
-        e.destruct();
-    }
+    let mut oi_checker = OIChecker::new().unwrap_or_else(|err| err.destruct());
+    oi_checker.run().unwrap_or_else(|err| err.destruct());
 }
 
 struct OIChecker {
     logger: Logger,
+    config: config::Config,
 }
 
 impl OIChecker {
-    fn new() -> Self {
+    fn new() -> Result<Self, CheckerError> {
         use logging::Level::Info;
         let logger = Logger::new(String::from("OIChecker"), Info);
-        Self { logger }
+        let config = config::get_config()?;
+        Ok(Self { logger, config })
+    }
+
+    fn try_compile(&self, program_ptr: *mut PathBuf, stage: Stage) -> Result<(), CheckerError> {
+        let program = unsafe { (*program_ptr).to_owned() };
+        let ext = if let Some(ext) = program.extension() {
+            ext
+        } else {
+            self.logger.info(&format!(
+                "No extension name for \"{}\", skip it.",
+                program.try_to_string()?
+            ));
+            return Ok(());
+        };
+        let rule = self.config.compilation_rules.get_rule(ext.try_to_string()?);
+        if let Some(rule) = rule {
+            let target = rule.run(&self.config.working_directory, &program, stage)?;
+            self.logger.info(&format!(
+                "Compile {} successfully.",
+                program.try_to_string()?
+            ));
+            unsafe {
+                (*program_ptr) = PathBuf::from(target);
+            }
+        } else {
+            self.logger.info(&format!(
+                "No matched compilation config for \"{}\" (extension = {}), skip it",
+                program.try_to_string()?,
+                ext.try_to_string()?
+            ));
+        }
+        Ok(())
     }
 
     /// Main function, run the checker
     fn run(&mut self) -> Result<(), CheckerError> {
-        use crate::checker_error::Stage;
         use std::fs;
-        let config = config::get_config()?;
         self.logger.info("Parse configuration successfully.");
-        if !config.working_directory.exists() {
-            if let Err(err) = fs::create_dir(&config.working_directory) {
-                return Err(CheckerError::CreateWorkDirError {
+        if !self.config.working_directory.exists() {
+            fs::create_dir(&self.config.working_directory).map_err(|err| {
+                CheckerError::CreateWorkDirError {
                     err,
-                    dir: config.working_directory.to_owned(),
-                });
-            }
-        }
-        macro_rules! try_compile {
-            ($program: ident, $stage: expr) => {
-                if let Some(ext) = config.$program.extension() {
-                    let rule = config.compilation_rules.get_rule(ext.try_to_string()?);
-                    if let Some(rule) = rule {
-                        rule.run(&config.working_directory, &config.$program, $stage)?;
-                        self.logger.info(&format!(
-                            "Compile {} successfully.",
-                            config.$program.try_to_string()?
-                        ));
-                    } else {
-                        self.logger.info(&format!(
-                            "No matched compilation config for \"{}\", skip it.",
-                            config.$program.try_to_string()?
-                        ));
-                    }
+                    dir: self.config.working_directory.to_owned(),
                 }
-            };
+            })?;
         }
-        try_compile!(data_generator, Stage::CompileDG);
-        try_compile!(accepted_program, Stage::CompileAC);
-        try_compile!(tested_program, Stage::CompileTP);
+        let data_generator_ptr = &mut self.config.data_generator as *mut PathBuf;
+        let accepted_program_ptr = &mut self.config.accepted_program as *mut PathBuf;
+        let tested_program_ptr = &mut self.config.tested_program as *mut PathBuf;
+        self.try_compile(data_generator_ptr, Stage::CompileDG)?;
+        self.try_compile(accepted_program_ptr, Stage::CompileAC)?;
+        self.try_compile(tested_program_ptr, Stage::CompileTP)?;
         todo!(); // TODO
     }
 }
