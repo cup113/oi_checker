@@ -6,16 +6,14 @@ mod config;
 mod dyn_formatting;
 mod launch;
 mod logging;
-mod path_lib;
+mod os_lib;
 
 use std::path::PathBuf;
 use std::sync::mpsc;
-use std::time::Duration;
 
 use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
-use crate::launch::LaunchOk;
 use crate::logging::Logger;
-use crate::path_lib::TryToString;
+use crate::os_lib::TryToString;
 
 fn main() {
     let mut oi_checker = OIChecker::new().unwrap_or_else(|err| err.destruct());
@@ -29,7 +27,7 @@ struct OIChecker {
 
 impl OIChecker {
     /// Get a new OIChecker. It should be generated once only.
-    fn new() -> Result<Self, CheckerError> {
+    fn new() -> Result<Self, BoxedCheckerError> {
         use logging::Level::Info;
         let logger = Logger::new("OIChecker".into(), Info);
         let config = config::get_config()?;
@@ -77,7 +75,6 @@ impl OIChecker {
         use crate::launch::{LaunchSuiteEnum, SuiteLauncher};
         use std::fs;
         use threadpool::ThreadPool;
-        use console;
 
         self.logger.info("Parse configuration successfully.");
         if !self.config.working_directory.exists() {
@@ -116,20 +113,21 @@ impl OIChecker {
                     launch_result_count.0 += 1;
                     format!("AC ({0:.3} ms)", duration.as_secs_f64() * 1000.0)
                 }
-                LaunchSuiteEnum::WA(duration, file) => {
-                    launch_result_count.1 += 1;
+                LaunchSuiteEnum::WA(duration, file, log_success) => {
+                    launch_result_count.2 += 1;
                     format!(
-                        "WA ({0:.3} ms) See difference in file {1}",
+                        "WA ({0:.3} ms) : See difference in file {1}{2}",
                         duration.as_secs_f64() * 1000.0,
-                        file.display()
+                        file.display(),
+                        if log_success { "" } else { "[write failed]" }
                     )
                 }
                 LaunchSuiteEnum::TLE(duration) => {
-                    launch_result_count.1 += 1;
-                    format!("TLE ({0:.3} ms", duration.as_secs_f64() * 1000.0)
+                    launch_result_count.2 += 1;
+                    format!("TLE ({0:.3} ms)", duration.as_secs_f64() * 1000.0)
                 }
                 LaunchSuiteEnum::UK(hint) => {
-                    launch_result_count.2 += 1;
+                    launch_result_count.1 += 1;
                     format!("UK: {}", hint)
                 }
             };
@@ -142,8 +140,8 @@ impl OIChecker {
         self.logger.info(&format!(
             "Report: AC {} UK {} WA {} / Total {}",
             console::style(launch_result_count.0).green(),
-            console::style(launch_result_count.2).yellow(),
-            console::style(launch_result_count.1).red(),
+            console::style(launch_result_count.1).yellow(),
+            console::style(launch_result_count.2).red(),
             self.config.test_cases
         ));
         // TODO auto remove files

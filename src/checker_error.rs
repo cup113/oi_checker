@@ -53,6 +53,16 @@ pub enum CheckerError {
         file: PathBuf,
         msg: String,
     },
+    FilterError {
+        filter: crate::config::OutputFilter,
+        err: io::Error,
+        file: PathBuf,
+    },
+    DiffToolError {
+        command: String,
+        args: Vec<String>,
+        err: io::Error,
+    },
     CleanFilesError {
         err: io::Error,
         path: PathBuf,
@@ -129,7 +139,7 @@ impl Display for CheckerError {
             } => write!(
                 f,
                 "Error when parsing arguments during {}: Key Not Found \
-                (key=\"{}\") when parsing pattern \"{}\" at pos {}.\n\
+                (key: \"{}\") when parsing pattern \"{}\" at pos {}.\n\
                 Help: Possible keys are: {}",
                 stage,
                 key,
@@ -151,6 +161,26 @@ impl Display for CheckerError {
                 stage,
                 file.display(),
                 msg,
+                command,
+                args.iter()
+                    .map(|arg| format!("\"{}\"", arg))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            FilterError { filter, err, file } => write!(
+                f,
+                "Error during filtering file {} (filter: {}): {}\n\
+                Help: This error shouldn't occur.",
+                file.display(),
+                filter,
+                err
+            ),
+            DiffToolError { command, args, err } => write!(
+                f,
+                "Error during comparing files: {}\n\
+                Command: \"{}\" {}\n\
+                Help: Please check if the different tool program exists.",
+                err,
                 command,
                 args.iter()
                     .map(|arg| format!("\"{}\"", arg))
@@ -181,7 +211,9 @@ impl CheckerError {
             ArgFormattingTokenError { .. } => 22,
             ArgFormattingKeyError { .. } => 23,
             CommandError { .. } => 24,
-            CleanFilesError { .. } => 25,
+            FilterError { .. } => 25,
+            DiffToolError { .. } => 26,
+            CleanFilesError { .. } => 27,
         }
     }
 

@@ -137,7 +137,7 @@ dependencies = [
 
 [[package]]
 name = "oi_checker"
-version = "0.1.0-dev20230122.13"
+version = "0.1.0-dev20230122.15"
 dependencies = [
  "clap",
  "console",

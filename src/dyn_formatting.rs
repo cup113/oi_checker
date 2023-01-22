@@ -142,7 +142,6 @@ enum InnerError {
 mod tests {
     use super::InnerError::*;
     use super::_dynamic_format;
-    use std::collections::HashMap;
 
     macro_rules! dynamic_format {
         ($pattern: expr, $dict_list: expr) => {

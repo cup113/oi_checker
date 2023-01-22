@@ -1,5 +1,5 @@
 use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
-use crate::config::cf_parsing;
+use crate::config::{self, cf_parsing};
 use crate::TryToString;
 use std::path::PathBuf;
 use std::process::Command;
@@ -156,6 +156,8 @@ pub struct SuiteLauncher {
     data_generator: PathBuf,
     accepted_program: PathBuf,
     tested_program: PathBuf,
+    output_filters: Vec<config::OutputFilter>,
+    diff_tool: config::DiffTool,
 }
 
 impl SuiteLauncher {
@@ -217,22 +219,12 @@ impl SuiteLauncher {
             &tp_out_file,
             Stage::LaunchTP,
         );
-        let tp_duration = if let Ok(res) = &tp_result {
-            match res {
-                LaunchOk::Success(duration) | LaunchOk::Timeout(duration) => Some(duration.to_owned()),
+        let tp_duration = match tp_result {
+            Ok(LaunchOk::Success(duration) | LaunchOk::Timeout(duration)) => duration,
+            Err(err) => {
+                return LaunchSuiteEnum::UK(format!("Launch tested program failed: {}", err))
             }
-        } else {
-            None
         };
-        let tp_handle = tp_result
-            .map(|o| match o {
-                LaunchOk::Success(_) => None,
-                LaunchOk::Timeout(_) => None,
-            })
-            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
-        if let Some(hint) = tp_handle {
-            return LaunchSuiteEnum::UK(format!("Launch tested program failed: {}", hint));
-        }
 
         let ac_result = self.run_one(
             &self.accepted_program,
@@ -250,15 +242,34 @@ impl SuiteLauncher {
         if let Some(hint) = ac_handle {
             return LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint));
         }
-        // TODO compare
-        if let Some(duration) = tp_duration {
-            if duration <= self.accepted_timeout {
-                LaunchSuiteEnum::AC(duration)
-            } else {
-                LaunchSuiteEnum::TLE(duration)
-            }
+
+        for output_filter in self.output_filters.iter() {
+            if let Err(err) = output_filter.run(&ac_out_file) {
+                return LaunchSuiteEnum::UK(format!("Filter accepted output file failed: {}", err));
+            };
+            if let Err(err) = output_filter.run(&tp_out_file) {
+                return LaunchSuiteEnum::UK(format!("Filter tested output file failed: {}", err));
+            };
+        }
+
+        let diff_result = self.diff_tool.run(
+            (&tp_out_file, &ac_out_file),
+            &work_dir.join(format!("wa{}.log", index)),
+        );
+        match diff_result {
+            Ok(diff_ok) => match diff_ok {
+                config::DiffToolOk::Different {
+                    log_path,
+                    log_success,
+                } => return LaunchSuiteEnum::WA(tp_duration, log_path, log_success),
+                config::DiffToolOk::Success => (),
+            },
+            Err(err) => return LaunchSuiteEnum::UK(format!("Different tool failed: {}", err)),
+        }
+        if tp_duration <= self.accepted_timeout {
+            LaunchSuiteEnum::AC(tp_duration)
         } else {
-            unreachable!();
+            LaunchSuiteEnum::TLE(tp_duration)
         }
     }
 
@@ -278,7 +289,7 @@ pub struct LaunchSuiteResult {
 
 pub enum LaunchSuiteEnum {
     AC(Duration),
-    WA(Duration, PathBuf),
+    WA(Duration, PathBuf, bool),
     TLE(Duration),
     UK(String),
 }
@@ -294,6 +305,8 @@ impl From<&crate::OIChecker> for SuiteLauncher {
             data_generator: value.config.data_generator.to_owned(),
             accepted_program: value.config.accepted_program.to_owned(),
             tested_program: value.config.tested_program.to_owned(),
+            output_filters: value.config.output_filters.to_owned(),
+            diff_tool: value.config.diff_tool.to_owned(),
         }
     }
 }

@@ -49,7 +49,7 @@ impl From<u32> for Level {
 pub struct Logger {
     start: Instant,
     name: String,
-    pub min_level: Level,
+    min_level: Level,
 }
 
 #[allow(dead_code)]

@@ -1,5 +1,4 @@
 # Some of the configurations are inspired by VSCode C/C++ extension and Manim.
-# TODO move them into README
 
 [default]
 # Note: All of the items in table `default` can be redefined by
