@@ -13,14 +13,6 @@ pub struct LaunchConfig {
     pub args: Vec<String>,
 }
 
-#[derive(Debug)]
-pub enum LaunchResult {
-    Success(Duration),
-    Timeout(Duration),
-    IOError(io::Error),
-    CheckerError(CheckerError),
-}
-
 impl From<cf_parsing::LaunchConfig> for LaunchConfig {
     fn from(value: cf_parsing::LaunchConfig) -> Self {
         Self {
@@ -37,6 +29,12 @@ impl Default for LaunchConfig {
             args: Vec::new(),
         }
     }
+}
+
+#[derive(Debug)]
+pub enum LaunchOk {
+    Success(Duration),
+    Timeout(Duration),
 }
 
 impl LaunchConfig {
@@ -103,27 +101,20 @@ impl LaunchConfig {
         timeout: Duration,
         input_file: &Option<PathBuf>,
         output_file: &PathBuf,
-    ) -> LaunchResult {
+    ) -> Result<LaunchOk, CheckerError> {
         use std::process::Stdio;
         use std::thread;
         use std::time::Instant;
         let args = {
-            let mut args = match self.get_args(file, stage) {
-                Ok(args) => args,
-                Err(err) => return LaunchResult::CheckerError(err),
-            };
+            let mut args = self.get_args(file, stage)?;
             args.extend(extra_args);
             args
         };
-        let program = self.command.clone().unwrap_or(match file.try_to_string() {
-            Ok(file) => file,
-            Err(err) => return LaunchResult::CheckerError(err),
-        });
-        println!("{}", program);
+        let program = self.command.clone().unwrap_or(file.try_to_string()?);
         let (tx, rx) = mpsc::channel();
         let command: Command = {
-            let mut command = Command::new(program);
-            command.args(args).stdout(Stdio::piped());
+            let mut command = Command::new(program.to_owned());
+            command.args(&args).stdout(Stdio::piped());
             if let Some(_) = input_file {
                 command.stdin(Stdio::piped());
             }
@@ -138,11 +129,16 @@ impl LaunchConfig {
         let start = Instant::now();
         let received = rx.recv_timeout(timeout);
         if let Err(_) = received {
-            LaunchResult::Timeout(start.elapsed())
+            Ok(LaunchOk::Timeout(start.elapsed()))
         } else if let Ok(Err(err)) = received {
-            LaunchResult::IOError(err)
+            Err(CheckerError::LaunchError {
+                command: program.to_owned(),
+                args,
+                file: program.into(),
+                msg: format!("Error when launching: {}", err),
+            })
         } else {
-            LaunchResult::Success(start.elapsed())
+            Ok(LaunchOk::Success(start.elapsed()))
         }
     }
 }

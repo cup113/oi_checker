@@ -24,6 +24,3 @@ impl TryToString for PathBuf {
         self.as_os_str().try_to_string()
     }
 }
-
-fn file_prefix() {
-}

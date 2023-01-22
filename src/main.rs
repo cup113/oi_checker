@@ -13,7 +13,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use crate::checker_error::{CheckerError, Stage};
-use crate::launch::LaunchResult;
+use crate::launch::LaunchOk;
 use crate::logging::Logger;
 use crate::path_lib::TryToString;
 
@@ -37,8 +37,11 @@ impl OIChecker {
     }
 
     /// TODO doc
-    fn try_compile(&self, program_ptr: *mut PathBuf, stage: Stage) -> Result<(), CheckerError> {
-        let program = unsafe { (*program_ptr).to_owned() };
+    fn try_compile(
+        &self,
+        program: &PathBuf,
+        stage: Stage,
+    ) -> Result<Option<PathBuf>, CheckerError> {
         let ext = if let Some(ext) = program.extension() {
             ext
         } else {
@@ -46,7 +49,7 @@ impl OIChecker {
                 "No extension name for \"{}\", skip it.",
                 program.try_to_string()?
             ));
-            return Ok(());
+            return Ok(None);
         };
         let rule = self.config.compilation_rules.get_rule(ext.try_to_string()?);
         if let Some(rule) = rule {
@@ -55,17 +58,15 @@ impl OIChecker {
                 "Compile {} successfully.",
                 program.try_to_string()?
             ));
-            unsafe {
-                (*program_ptr) = PathBuf::from(target);
-            }
+            Ok(Some(target.into()))
         } else {
             self.logger.info(&format!(
                 "No matched compilation config for \"{}\" (extension = {}), skip it",
                 program.try_to_string()?,
                 ext.try_to_string()?
             ));
+            Ok(None)
         }
-        Ok(())
     }
 
     /// TODO doc
@@ -76,15 +77,12 @@ impl OIChecker {
         input_file: &Option<PathBuf>,
         output_file: &PathBuf,
         stage: Stage,
-    ) -> LaunchResult {
+    ) -> Result<LaunchOk, CheckerError> {
         let default_launch_rule = launch::LaunchConfig::default();
         let launch_rule = if let Some(ext) = program.extension() {
             self.config
                 .launch_rules
-                .get_rule(match ext.try_to_string() {
-                    Ok(ext) => ext,
-                    Err(e) => return LaunchResult::CheckerError(e),
-                })
+                .get_rule(ext.try_to_string()?)
                 .unwrap_or(&default_launch_rule)
         } else {
             &default_launch_rule
@@ -104,6 +102,7 @@ impl OIChecker {
         let data_file = PathBuf::from(format!("data{}.in", index));
         let ac_out_file = PathBuf::from(format!("ac{}.out", index));
         let tp_out_file = PathBuf::from(format!("tested{}.out", index));
+
         let dg_result = self.launch_one(
             &self.config.data_generator,
             Vec::from([index.to_string(), self.config.test_cases.to_string()]),
@@ -111,18 +110,19 @@ impl OIChecker {
             &data_file,
             Stage::LaunchDG,
         );
-        let dg_handle = match dg_result {
-            LaunchResult::Timeout(_) => Some(String::from("Timeout")),
-            LaunchResult::IOError(e) => Some(format!("IO Error: {}", e)),
-            LaunchResult::CheckerError(e) => Some(format!("Checker Error: {}", e)),
-            LaunchResult::Success(_) => None,
-        };
+        let dg_handle = dg_result
+            .map(|o| match o {
+                LaunchOk::Success(_) => None,
+                LaunchOk::Timeout(_) => Some("Timeout".into()),
+            })
+            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
         if let Some(hint) = dg_handle {
             return LaunchSuiteResult {
                 index,
                 inner: LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint)),
             };
         }
+
         let ac_result = self.launch_one(
             &self.config.accepted_program,
             Vec::from([index.to_string(), self.config.test_cases.to_string()]),
@@ -130,18 +130,19 @@ impl OIChecker {
             &ac_out_file,
             Stage::LaunchAC,
         );
-        let ac_handle = match ac_result {
-            LaunchResult::Timeout(_) => Some(String::from("Timeout")),
-            LaunchResult::IOError(e) => Some(format!("IO Error: {}", e)),
-            LaunchResult::CheckerError(e) => Some(format!("Checker Error: {}", e)),
-            LaunchResult::Success(_) => None,
-        };
+        let ac_handle = ac_result
+            .map(|o| match o {
+                LaunchOk::Success(_) => None,
+                LaunchOk::Timeout(_) => Some("Timeout".into()),
+            })
+            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
         if let Some(hint) = ac_handle {
             return LaunchSuiteResult {
                 index,
                 inner: LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint)),
             };
         }
+
         let tp_result = self.launch_one(
             &self.config.tested_program,
             Vec::new(),
@@ -149,17 +150,12 @@ impl OIChecker {
             &tp_out_file,
             Stage::LaunchTP,
         );
-        let tp_handle = match tp_result {
-            LaunchResult::Timeout(duration) => {
-                return LaunchSuiteResult {
-                    index,
-                    inner: LaunchSuiteEnum::TLE(duration),
-                }
-            }
-            LaunchResult::IOError(e) => Some(format!("IOError: {}", e)),
-            LaunchResult::CheckerError(e) => Some(format!("IOError: {}", e)),
-            LaunchResult::Success(_) => None,
-        };
+        let tp_handle = tp_result
+            .map(|o| match o {
+                LaunchOk::Success(_) => None,
+                LaunchOk::Timeout(_) => Some("Timeout".into()),
+            })
+            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
         if let Some(hint) = tp_handle {
             return LaunchSuiteResult {
                 index,
@@ -182,12 +178,16 @@ impl OIChecker {
                 }
             })?;
         }
-        let data_generator_ptr = &mut self.config.data_generator as *mut PathBuf;
-        let accepted_program_ptr = &mut self.config.accepted_program as *mut PathBuf;
-        let tested_program_ptr = &mut self.config.tested_program as *mut PathBuf;
-        self.try_compile(data_generator_ptr, Stage::CompileDG)?;
-        self.try_compile(accepted_program_ptr, Stage::CompileAC)?;
-        self.try_compile(tested_program_ptr, Stage::CompileTP)?;
+        macro_rules! try_compile {
+            ($program: ident, $stage: expr) => {
+                if let Some(target) = self.try_compile(&self.config.$program, $stage)? {
+                    self.config.$program = target;
+                }
+            };
+        }
+        try_compile!(data_generator, Stage::CompileDG);
+        try_compile!(accepted_program, Stage::CompileAC);
+        try_compile!(tested_program, Stage::CompileTP);
         todo!(); // TODO
     }
 }
