@@ -54,10 +54,10 @@ pub struct Logger {
 
 #[allow(dead_code)]
 impl Logger {
-    pub fn new(_name: String, min_level: Level) -> Self {
+    pub fn new(name: String, min_level: Level) -> Self {
         Self {
             start: Instant::now(),
-            name: _name,
+            name,
             min_level,
         }
     }

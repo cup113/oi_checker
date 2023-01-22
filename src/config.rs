@@ -25,7 +25,9 @@ pub fn get_config() -> Result<Config, CheckerError> {
     let ac_timeout = Duration::from_millis(get_default!(ac_timeout).into());
     let program_timeout = Duration::from_millis(get_default!(program_timeout).into());
     let working_directory = get_default!(working_directory);
-    let auto_remove_files = AutoRemoveFiles::try_from(get_default!(auto_remove_files).as_str())
+    let auto_remove_files: AutoRemoveFiles = get_default!(auto_remove_files)
+        .as_str()
+        .try_into()
         .map_err(|msg| CheckerError::CfgIntegrateError {
             msg,
             file_source: cf_file.to_owned(),
@@ -33,7 +35,7 @@ pub fn get_config() -> Result<Config, CheckerError> {
     let output_filters: Vec<OutputFilter> = {
         let mut output_filters = Vec::new();
         for filter in get_default!(output_filters) {
-            output_filters.push(OutputFilter::try_from(filter.as_str()).map_err(|msg| {
+            output_filters.push(filter.as_str().try_into().map_err(|msg| {
                 CheckerError::CfgIntegrateError {
                     msg,
                     file_source: cf_file.to_owned(),
@@ -42,26 +44,24 @@ pub fn get_config() -> Result<Config, CheckerError> {
         }
         output_filters
     };
-    let diff_tool = DiffTool::try_from(get_default!(diff_tool)).map_err(|msg: String| {
+    let diff_tool: DiffTool = get_default!(diff_tool).try_into().map_err(|msg: String| {
         CheckerError::CfgIntegrateError {
             msg,
             file_source: cf_file.to_owned(),
         }
     })?;
-    let compilation_rules = ExtensionRules::from(
-        cf_config
-            .compilation
-            .into_iter()
-            .map(|c| (c.ext.clone(), CompilationConfig::from(c)))
-            .collect::<Vec<_>>(),
-    );
-    let launch_rules = ExtensionRules::from(
-        cf_config
-            .launch
-            .into_iter()
-            .map(|c| (c.ext.clone(), LaunchConfig::from(c)))
-            .collect::<Vec<_>>(),
-    );
+    let compilation_rules: ExtensionRules<CompilationConfig> = cf_config
+        .compilation
+        .into_iter()
+        .map(|c| (c.ext.clone(), c.into()))
+        .collect::<Vec<_>>()
+        .into();
+    let launch_rules: ExtensionRules<LaunchConfig> = cf_config
+        .launch
+        .into_iter()
+        .map(|c| (c.ext.clone(), c.into()))
+        .collect::<Vec<_>>()
+        .into();
     Ok(Config {
         tested_program,
         accepted_program,
@@ -180,7 +180,7 @@ impl TryFrom<Vec<String>> for DiffTool {
     type Error = String;
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
         if value.is_empty() {
-            return Err(String::from("`diff_tool` config list cannot be empty"));
+            return Err("`diff_tool` config list cannot be empty".into());
         }
         match value[0].as_str() {
             "fc" => match value.get(1) {

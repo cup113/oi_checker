@@ -2,25 +2,11 @@
 //!
 //! Also provide display & exit code
 
-use std::{
-    ffi::OsString,
-    fmt::{Display, Write},
-    io,
-    path::PathBuf,
-    process,
-};
+use std::ffi::OsString;
+use std::fmt::Display;
+use std::io;
+use std::path::PathBuf;
 use toml;
-
-/// Which stage the error occurs
-#[derive(Debug, Clone, Copy)]
-pub enum Stage {
-    CompileDG,
-    CompileAC,
-    CompileTP,
-    LaunchDG,
-    LaunchAC,
-    LaunchTP,
-}
 
 /// All error variants in OI Checker
 #[derive(Debug)]
@@ -57,15 +43,11 @@ pub enum CheckerError {
         stage: Stage,
         pattern: String,
         key: String,
+        dict_keys: Vec<String>,
         pos: usize,
     },
-    CompileError {
-        command: String,
-        args: Vec<String>,
-        file: PathBuf,
-        msg: String,
-    },
-    LaunchError {
+    CommandError {
+        stage: Stage,
         command: String,
         args: Vec<String>,
         file: PathBuf,
@@ -73,58 +55,114 @@ pub enum CheckerError {
     },
     CleanFilesError {
         err: io::Error,
-        file: PathBuf,
+        path: PathBuf,
     },
 }
 
+pub type BoxedCheckerError = Box<CheckerError>;
+
 impl Display for CheckerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO
         use CheckerError::*;
         match self {
-            OsStrUtf8Error { s } => {
-                write!(f, "Invalid non-UTF-8 string: {}.", s.to_string_lossy())
-            }
-            CfgFileNotFoundError { tried_files } => {
-                write!(
-                    f,
-                    "Cannot found config file. We have tried {}, {} and {}.",
-                    tried_files[0].display(),
-                    tried_files[1].display(),
-                    tried_files[2].display(),
-                )
-            }
-            CfgFileReadingError { err, file } => todo!(),
-            CfgFileParsingError { err, file } => {
-                write!(f, "Parse config file ({}) failed:\n{}", file.display(), err)
-            }
-            CfgIntegrateError { msg, file_source } => todo!(),
-            CreateWorkDirError { err, dir } => todo!(),
+            OsStrUtf8Error { s } => write!(
+                f,
+                "Invalid non-UTF-8 string: {}.\n\
+                Help: Make sure path names consist of legal UTF-8 characters.",
+                s.to_string_lossy()
+            ),
+            CfgFileNotFoundError { tried_files } => write!(
+                f,
+                "Cannot found config file. We have tried {}, {} and {}.\n\
+                Help: Make sure at least one config file exist.",
+                tried_files[0].display(),
+                tried_files[1].display(),
+                tried_files[2].display(),
+            ),
+            CfgFileReadingError { err, file } => write!(
+                f,
+                "Read config file ({}) failed:\n{}\n\
+                Help: Check file permission.",
+                file.display(),
+                err
+            ),
+            CfgFileParsingError { err, file } => write!(
+                f,
+                "Parse config file ({}) failed:\n{}\n\
+                Help: Check if the file is TOML grammatical and has all of the \
+                fields and correspond types.",
+                file.display(),
+                err
+            ),
+            CfgIntegrateError { msg, file_source } => write!(
+                f,
+                "Error when integrating config (file source: {}): {}\n\
+                Help: Check if the value is legal (in options).",
+                file_source.display(),
+                msg
+            ),
+            CreateWorkDirError { err, dir } => write!(
+                f,
+                "Error when creating working directory ({}): {}\n\
+                Help: Check directory permission. Avoid using nested path.",
+                dir.display(),
+                err
+            ),
             ArgFormattingTokenError {
                 stage,
                 pattern,
                 desc,
                 pos,
-            } => todo!(),
+            } => write!(
+                f,
+                "Error when parsing arguments during {}: Token Error ({}) when \
+                parsing pattern \"{}\" at pos {}.\n\
+                Help: Correct the grammar of formatting",
+                stage, desc, pattern, pos
+            ),
             ArgFormattingKeyError {
                 stage,
                 pattern,
                 key,
+                dict_keys,
                 pos,
-            } => todo!(),
-            CompileError {
+            } => write!(
+                f,
+                "Error when parsing arguments during {}: Key Not Found \
+                (key=\"{}\") when parsing pattern \"{}\" at pos {}.\n\
+                Help: Possible keys are: {}",
+                stage,
+                key,
+                pattern,
+                pos,
+                dict_keys.join(","),
+            ),
+            CommandError {
+                stage,
                 command,
                 args,
                 file,
                 msg,
-            } => todo!(),
-            LaunchError {
-                command,
-                args,
-                file,
+            } => write!(
+                f,
+                "Error during {} (file: {}): {}.\n\
+                Command: \"{}\" {}\n\
+                Help: Check your program or config.",
+                stage,
+                file.display(),
                 msg,
-            } => todo!(),
-            CleanFilesError { err, file } => todo!(),
+                command,
+                args.iter()
+                    .map(|arg| format!("\"{}\"", arg))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            CleanFilesError { err, path } => write!(
+                f,
+                "Failed to clean files (path: {}): {}",
+                path.display(),
+                err
+            ),
         }
     }
 }
@@ -142,15 +180,41 @@ impl CheckerError {
             CreateWorkDirError { .. } => 21,
             ArgFormattingTokenError { .. } => 22,
             ArgFormattingKeyError { .. } => 23,
-            CompileError { .. } => 24,
-            LaunchError { .. } => unreachable!(),
+            CommandError { .. } => 24,
             CleanFilesError { .. } => 25,
         }
     }
 
     /// Print the error message to `stderr` and exit with the provided code
     pub fn destruct(&self) -> ! {
+        use std::process;
         eprintln!("{}", self);
         process::exit(self.get_exit_code());
+    }
+}
+
+/// Which stage the error occurs
+#[derive(Debug, Clone, Copy)]
+pub enum Stage {
+    CompileDG,
+    CompileAC,
+    CompileTP,
+    LaunchDG,
+    LaunchAC,
+    LaunchTP,
+}
+
+impl Display for Stage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Stage::*;
+        let s = match *self {
+            CompileDG => "compiling data generator",
+            CompileAC => "compiling accepted program",
+            CompileTP => "compiling tested program",
+            LaunchDG => "launching data generator",
+            LaunchAC => "launching accepted program",
+            LaunchTP => "launching tested program",
+        };
+        write!(f, "{}", s)
     }
 }
