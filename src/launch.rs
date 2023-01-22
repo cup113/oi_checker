@@ -7,7 +7,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 use std::{fs, io};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LaunchConfig {
     pub command: Option<String>,
     pub args: Vec<String>,
@@ -81,6 +81,7 @@ impl LaunchConfig {
             let mut child_stdin = child.stdin.take().expect("Stdin not piped");
             let _ = child_stdin.write(input_buf);
         }
+        let _ = tx.send(Ok(()));
         let output = match child.wait_with_output() {
             Ok(output) => output,
             Err(e) => {
@@ -88,8 +89,8 @@ impl LaunchConfig {
                 return;
             }
         };
-        let _ = fs::write(output_file, output.stdout);
         let _ = tx.send(Ok(()));
+        let _ = fs::write(output_file, output.stdout);
     }
 
     /// TODO doc
@@ -122,12 +123,13 @@ impl LaunchConfig {
         };
         let _input_file = input_file.to_owned();
         let _output_file = output_file.to_owned();
-        thread::spawn(move || {
+        let handle = thread::spawn(move || {
             Self::run_inner(command, &_input_file, &_output_file, tx);
         });
         let _ = rx.recv();
         let start = Instant::now();
         let received = rx.recv_timeout(timeout);
+        let _ = handle.join();
         if let Err(_) = received {
             Ok(LaunchOk::Timeout(start.elapsed()))
         } else if let Ok(Err(err)) = received {
@@ -140,6 +142,158 @@ impl LaunchConfig {
             }))
         } else {
             Ok(LaunchOk::Success(start.elapsed()))
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct SuiteLauncher {
+    rules: crate::config::ExtensionRules<LaunchConfig>,
+    test_cases: u32,
+    program_timeout: Duration,
+    accepted_timeout: Duration,
+    working_directory: PathBuf,
+    data_generator: PathBuf,
+    accepted_program: PathBuf,
+    tested_program: PathBuf,
+}
+
+impl SuiteLauncher {
+    /// TODO doc
+    fn run_one(
+        &self,
+        program: &PathBuf,
+        extra_args: Vec<String>,
+        input_file: &Option<PathBuf>,
+        output_file: &PathBuf,
+        stage: Stage,
+    ) -> Result<LaunchOk, BoxedCheckerError> {
+        let default_launch_rule = LaunchConfig::default();
+        let launch_rule = if let Some(ext) = program.extension() {
+            self.rules
+                .get_rule(&ext.try_to_string()?)
+                .unwrap_or(&default_launch_rule)
+        } else {
+            &default_launch_rule
+        };
+        launch_rule.run(
+            program,
+            stage,
+            extra_args,
+            self.program_timeout,
+            input_file,
+            output_file,
+        )
+    }
+
+    /// TODO doc
+    fn run_suite_inner(&self, index: u32) -> LaunchSuiteEnum {
+        let work_dir = &self.working_directory;
+        let data_file = work_dir.join(format!("data{}.in", index));
+        let ac_out_file = work_dir.join(format!("ac{}.out", index));
+        let tp_out_file = work_dir.join(format!("tested{}.out", index));
+
+        let dg_result = self.run_one(
+            &self.data_generator,
+            [index.to_string(), self.test_cases.to_string()].into(),
+            &None,
+            &data_file,
+            Stage::LaunchDG,
+        );
+        let dg_handle = dg_result
+            .map(|o| match o {
+                LaunchOk::Success(_) => None,
+                LaunchOk::Timeout(_) => Some("Timeout".into()),
+            })
+            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
+        if let Some(hint) = dg_handle {
+            return LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint));
+        }
+
+        let tp_result = self.run_one(
+            &self.tested_program,
+            Vec::new(),
+            &Some(data_file.clone()),
+            &tp_out_file,
+            Stage::LaunchTP,
+        );
+        let tp_duration = if let Ok(res) = &tp_result {
+            match res {
+                LaunchOk::Success(duration) | LaunchOk::Timeout(duration) => Some(duration.to_owned()),
+            }
+        } else {
+            None
+        };
+        let tp_handle = tp_result
+            .map(|o| match o {
+                LaunchOk::Success(_) => None,
+                LaunchOk::Timeout(_) => None,
+            })
+            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
+        if let Some(hint) = tp_handle {
+            return LaunchSuiteEnum::UK(format!("Launch tested program failed: {}", hint));
+        }
+
+        let ac_result = self.run_one(
+            &self.accepted_program,
+            [index.to_string(), self.test_cases.to_string()].into(),
+            &Some(data_file.clone()),
+            &ac_out_file,
+            Stage::LaunchAC,
+        );
+        let ac_handle = ac_result
+            .map(|o| match o {
+                LaunchOk::Success(_) => None,
+                LaunchOk::Timeout(_) => Some("Timeout".into()),
+            })
+            .unwrap_or_else(|err| Some(format!("Inner Error: {}", err)));
+        if let Some(hint) = ac_handle {
+            return LaunchSuiteEnum::UK(format!("Launch data generator failed: {}", hint));
+        }
+        // TODO compare
+        if let Some(duration) = tp_duration {
+            if duration <= self.accepted_timeout {
+                LaunchSuiteEnum::AC(duration)
+            } else {
+                LaunchSuiteEnum::TLE(duration)
+            }
+        } else {
+            unreachable!();
+        }
+    }
+
+    pub fn run_suite(&self, index: u32, tx: mpsc::Sender<LaunchSuiteResult>) {
+        tx.send(LaunchSuiteResult {
+            index,
+            inner: self.run_suite_inner(index),
+        })
+        .expect("Sender should send successfully");
+    }
+}
+
+pub struct LaunchSuiteResult {
+    pub index: u32,
+    pub inner: LaunchSuiteEnum,
+}
+
+pub enum LaunchSuiteEnum {
+    AC(Duration),
+    WA(Duration, PathBuf),
+    TLE(Duration),
+    UK(String),
+}
+
+impl From<&crate::OIChecker> for SuiteLauncher {
+    fn from(value: &crate::OIChecker) -> Self {
+        Self {
+            rules: value.config.launch_rules.to_owned(),
+            test_cases: value.config.test_cases,
+            program_timeout: value.config.program_timeout,
+            accepted_timeout: value.config.ac_timeout,
+            working_directory: value.config.working_directory.to_owned(),
+            data_generator: value.config.data_generator.to_owned(),
+            accepted_program: value.config.accepted_program.to_owned(),
+            tested_program: value.config.tested_program.to_owned(),
         }
     }
 }

@@ -64,7 +64,7 @@ impl Logger {
     fn print_log<T: Display + ?Sized>(&self, level: &Level, content: &T) {
         if level.as_value() >= self.min_level.as_value() {
             println!(
-                "[{2:^7}] {0:>3} {1:^7} {3}",
+                "[{2:^7}] {0:>4} {1:^7} {3}",
                 self.start.elapsed().as_millis(),
                 level.to_str(),
                 self.name,
@@ -75,7 +75,7 @@ impl Logger {
     fn error_log<T: Display + ?Sized>(&self, level: &Level, content: &T) {
         if level.as_value() >= self.min_level.as_value() {
             eprintln!(
-                "[{2:^7}] {0:>3} {1:^7} {3}",
+                "[{2:^7}] {0:>4} {1:^7} {3}",
                 self.start.elapsed().as_millis(),
                 level.to_str(),
                 self.name,

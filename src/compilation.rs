@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CompilationConfig {
     pub target: String,
     pub optimize_flag: String,

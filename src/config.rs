@@ -98,20 +98,21 @@ pub struct Config {
 }
 
 /// Manage rules that is matched by extension names like `launch` and `compilation`
-#[derive(Debug)]
-pub struct ExtensionRules<T> {
+#[derive(Debug, Clone)]
+pub struct ExtensionRules<T: Clone>
+{
     store: Vec<T>,
     mapping: HashMap<String, usize>,
 }
 
-impl<T> ExtensionRules<T> {
+impl<T: Clone> ExtensionRules<T> {
     /// Get the rule of the given extension. Return `None` if not found.
-    pub fn get_rule(&self, key: String) -> Option<&T> {
-        self.mapping.get(&key).map(|i| self.store.get(*i).unwrap())
+    pub fn get_rule(&self, ext: &String) -> Option<&T> {
+        self.mapping.get(ext).map(|i| self.store.get(*i).unwrap())
     }
 }
 
-impl<T> From<Vec<(Vec<String>, T)>> for ExtensionRules<T> {
+impl<T: Clone> From<Vec<(Vec<String>, T)>> for ExtensionRules<T> {
     fn from(value: Vec<(Vec<String>, T)>) -> Self {
         let mut store = Vec::with_capacity(value.len());
         let mut mapping = HashMap::new();
