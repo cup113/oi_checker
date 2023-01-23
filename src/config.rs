@@ -3,17 +3,16 @@
 pub mod cf_parsing;
 mod cla_parsing;
 
-use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
+use crate::prelude::*;
+
 use crate::compilation::CompilationConfig;
 use crate::launch::LaunchConfig;
-use crate::TryToString;
 use dyn_formatting::{self, DynamicFormatError};
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::time::Duration;
+
+const CONFIG_FILE_DEFAULT: &'static str = include_str!("../config_default.toml");
 
 // Get the main configuration
-pub fn get_config() -> Result<Config, BoxedCheckerError> {
+pub fn get_config() -> CheckerResult<Config> {
     let cla_config = cla_parsing::parse_cla();
     let (cf_config, cf_file) = cf_parsing::parse_config_file()?;
     macro_rules! get_default {
@@ -143,7 +142,6 @@ impl AutoRemoveFiles {
         test_cases: u32,
         work_dir: &PathBuf,
     ) -> Result<(), std::io::Error> {
-        use std::fs;
         match self {
             Self::Never => Ok(()),
             Self::Always => {
@@ -226,8 +224,7 @@ impl OutputFilter {
     }
 
     /// TODO doc
-    pub fn run(&self, file: &PathBuf) -> Result<(), BoxedCheckerError> {
-        use std::fs::{self, File};
+    pub fn run(&self, file: &PathBuf) -> CheckerResult<()> {
         use std::io::Write;
         macro_rules! deal_io_err {
             ($result: expr) => {
@@ -302,9 +299,7 @@ impl DiffTool {
         &self,
         files: (&PathBuf, &PathBuf),
         dump_diff_file: &PathBuf,
-    ) -> Result<DiffToolOk, BoxedCheckerError> {
-        use std::fs;
-        use std::process::{Command, Stdio};
+    ) -> CheckerResult<DiffToolOk> {
         let (program, mut args): (String, Vec<String>) = match self {
             Self::FC(Some(n)) => ("fc".into(), [format!("/LB{}", n)].into()),
             Self::FC(_) => ("fc".into(), Vec::new()),
@@ -372,7 +367,7 @@ pub fn dynamic_format(
     pattern: &str,
     dictionary: &HashMap<&str, &str>,
     stage: Stage,
-) -> Result<String, BoxedCheckerError> {
+) -> CheckerResult<String> {
     use CheckerError::*;
     use DynamicFormatError::*;
     dyn_formatting::dynamic_format(pattern, dictionary).map_err(|e| {

@@ -1,5 +1,6 @@
 //! Command-line argument parser.
 
+use crate::prelude::*;
 use clap::{
     builder::{
         IntoResettable, NonEmptyStringValueParser, PathBufValueParser, RangedU64ValueParser,
@@ -8,7 +9,6 @@ use clap::{
     parser::ValuesRef,
     Arg, ArgAction, Command,
 };
-use std::path::PathBuf;
 
 /// Parse command-line arguments
 pub fn parse_cla() -> ClaConfig {
@@ -97,8 +97,17 @@ pub fn parse_cla() -> ClaConfig {
                 .value_name("TOOL")
                 .value_delimiter(';')
                 .value_parser(NonEmptyStringValueParser::new()),
+        )
+        .arg(
+            Arg::new("get-default-config")
+                .long("get-default-config")
+                .action(ArgAction::SetTrue),
         );
     let matches = app.get_matches();
+    if matches.get_flag("get-default-config") {
+        println!("{}", crate::config::CONFIG_FILE_DEFAULT);
+        std::process::exit(0);
+    }
     macro_rules! get_one {
         ($id: expr, $tp: ty) => {{
             let result: Option<$tp> = matches.get_one($id).map(|s: &$tp| s.to_owned());

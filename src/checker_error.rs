@@ -2,10 +2,8 @@
 //!
 //! Also provide display & exit code
 
+use crate::prelude::{io, Display, PathBuf};
 use std::ffi::OsString;
-use std::fmt::Display;
-use std::io;
-use std::path::PathBuf;
 use toml;
 
 /// All error variants in OI Checker
@@ -13,9 +11,6 @@ use toml;
 pub enum CheckerError {
     OsStrUtf8Error {
         s: OsString,
-    },
-    CfgFileNotFoundError {
-        tried_files: [PathBuf; 3],
     },
     CfgFileReadingError {
         err: io::Error,
@@ -66,6 +61,7 @@ pub enum CheckerError {
 }
 
 pub type BoxedCheckerError = Box<CheckerError>;
+pub type CheckerResult<T> = Result<T, BoxedCheckerError>;
 
 impl Display for CheckerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -76,14 +72,6 @@ impl Display for CheckerError {
                 "Invalid non-UTF-8 string: {}.\n\
                 Help: Make sure path names consist of legal UTF-8 characters.",
                 s.to_string_lossy()
-            ),
-            CfgFileNotFoundError { tried_files } => write!(
-                f,
-                "Cannot found config file. We have tried {}, {} and {}.\n\
-                Help: Make sure at least one config file exist.",
-                tried_files[0].display(),
-                tried_files[1].display(),
-                tried_files[2].display(),
             ),
             CfgFileReadingError { err, file } => write!(
                 f,
@@ -188,29 +176,11 @@ impl Display for CheckerError {
 }
 
 impl CheckerError {
-    /// Get the exit code of each specific error type
-    pub fn get_exit_code(&self) -> i32 {
-        use CheckerError::*;
-        match *self {
-            OsStrUtf8Error { .. } => 16,
-            CfgFileNotFoundError { .. } => 17,
-            CfgFileReadingError { .. } => 18,
-            CfgFileParsingError { .. } => 19,
-            CfgIntegrateError { .. } => 20,
-            CreateWorkDirError { .. } => 21,
-            ArgFormattingTokenError { .. } => 22,
-            ArgFormattingKeyError { .. } => 23,
-            CommandError { .. } => 24,
-            FilterError { .. } => 25,
-            DiffToolError { .. } => 26,
-        }
-    }
-
     /// Print the error message to `stderr` and exit with the provided code
     pub fn destruct(&self) -> ! {
         use std::process;
         eprintln!("{}", self);
-        process::exit(self.get_exit_code());
+        process::exit(1);
     }
 }
 

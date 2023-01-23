@@ -6,13 +6,11 @@ mod config;
 mod launch;
 mod logging;
 mod os_lib;
+mod prelude;
 
-use std::path::PathBuf;
-use std::sync::mpsc;
-
-use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
+use crate::config::Config;
 use crate::logging::Logger;
-use crate::os_lib::TryToString;
+use crate::prelude::*;
 
 fn main() {
     let mut oi_checker = OIChecker::new().unwrap_or_else(|err| err.destruct());
@@ -21,12 +19,12 @@ fn main() {
 
 struct OIChecker {
     logger: Logger,
-    config: config::Config,
+    config: Config,
 }
 
 impl OIChecker {
     /// Get a new OIChecker. It should be generated once only.
-    fn new() -> Result<Self, BoxedCheckerError> {
+    fn new() -> CheckerResult<Self> {
         use logging::Level::Info;
         let logger = Logger::new("OIChecker".into(), Info);
         let config = config::get_config()?;
@@ -34,11 +32,7 @@ impl OIChecker {
     }
 
     /// TODO doc
-    fn try_compile(
-        &self,
-        program: &PathBuf,
-        stage: Stage,
-    ) -> Result<Option<PathBuf>, BoxedCheckerError> {
+    fn try_compile(&self, program: &PathBuf, stage: Stage) -> CheckerResult<Option<PathBuf>> {
         let ext = if let Some(ext) = program.extension() {
             ext
         } else {
@@ -70,9 +64,8 @@ impl OIChecker {
     }
 
     /// Main function, run the checker
-    fn run(&mut self) -> Result<(), BoxedCheckerError> {
+    fn run(&mut self) -> CheckerResult<()> {
         use crate::launch::{LaunchSuiteEnum, SuiteLauncher};
-        use std::fs;
         use threadpool::ThreadPool;
 
         self.logger.info("Parse configuration successfully.");

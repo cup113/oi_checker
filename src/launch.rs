@@ -1,11 +1,5 @@
-use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
+use crate::prelude::*;
 use crate::config::{self, cf_parsing, dynamic_format};
-use crate::TryToString;
-use std::path::PathBuf;
-use std::process::Command;
-use std::sync::mpsc;
-use std::time::Duration;
-use std::{fs, io};
 
 #[derive(Debug, Clone)]
 pub struct LaunchConfig {
@@ -39,8 +33,7 @@ pub enum LaunchOk {
 
 impl LaunchConfig {
     /// TODO doc
-    fn get_args(&self, file: &PathBuf, stage: Stage) -> Result<Vec<String>, BoxedCheckerError> {
-        use std::collections::HashMap;
+    fn get_args(&self, file: &PathBuf, stage: Stage) -> CheckerResult<Vec<String>> {
         // to give the &str longer lifetime
         let s_file = file.try_to_string()?;
         let args_dict: HashMap<&str, &str> = [("file", s_file.as_str())].into();
@@ -101,10 +94,7 @@ impl LaunchConfig {
         timeout: Duration,
         input_file: &Option<PathBuf>,
         output_file: &PathBuf,
-    ) -> Result<LaunchOk, BoxedCheckerError> {
-        use std::process::Stdio;
-        use std::thread;
-        use std::time::Instant;
+    ) -> CheckerResult<LaunchOk> {
         let args = {
             let mut args = self.get_args(file, stage)?;
             args.extend(extra_args);
@@ -169,7 +159,7 @@ impl SuiteLauncher {
         input_file: &Option<PathBuf>,
         output_file: &PathBuf,
         stage: Stage,
-    ) -> Result<LaunchOk, BoxedCheckerError> {
+    ) -> CheckerResult<LaunchOk> {
         let default_launch_rule = LaunchConfig::default();
         let launch_rule = if let Some(ext) = program.extension() {
             self.rules

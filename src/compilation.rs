@@ -1,11 +1,7 @@
 //! Compile program source files.
 
-use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
+use crate::prelude::*;
 use crate::config::{cf_parsing, dynamic_format};
-use crate::TryToString;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone)]
 pub struct CompilationConfig {
@@ -40,7 +36,7 @@ impl CompilationConfig {
         work_folder: &PathBuf,
         file: &PathBuf,
         stage: Stage,
-    ) -> Result<(String, Vec<String>), BoxedCheckerError> {
+    ) -> CheckerResult<(String, Vec<String>)> {
         let filename_no_extension = {
             if let Some(stem) = file.file_stem() {
                 stem
@@ -79,7 +75,7 @@ impl CompilationConfig {
         work_folder: &PathBuf,
         file: &PathBuf,
         stage: Stage,
-    ) -> Result<String, BoxedCheckerError> {
+    ) -> CheckerResult<String> {
         let (target, args) = self.get_args(work_folder, file, stage)?;
         let output = Command::new(&self.command)
             .stderr(Stdio::inherit())

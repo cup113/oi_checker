@@ -1,12 +1,12 @@
 //! Config file parsing module.
 
-use crate::checker_error::CheckerError;
+use crate::prelude::*;
 use serde::Deserialize;
-use std::{env, fs, path::PathBuf};
+use std::env;
 use toml;
 
 /// Parse the config file.
-pub fn parse_config_file() -> Result<(Config, PathBuf), CheckerError> {
+pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
     let program_dir = env::current_exe()
         .expect("Can't get env::current_exe")
         .parent()
@@ -19,21 +19,17 @@ pub fn parse_config_file() -> Result<(Config, PathBuf), CheckerError> {
         program_dir.join("config_default.toml"),
     ];
     let config_file = {
-        let mut c: Option<PathBuf> = None;
+        let mut config_file: Option<&PathBuf> = None;
         for alter_file in alter_files.iter() {
             if alter_file.is_file() {
-                c = Some(alter_file.to_owned());
+                config_file = Some(alter_file);
                 break;
             }
         }
-        match c {
-            Some(c) => c,
-            None => {
-                return Err(CheckerError::CfgFileNotFoundError {
-                    tried_files: alter_files,
-                })
-            }
-        }
+        config_file.unwrap_or({
+            let _ = fs::write(&alter_files[2], crate::config::CONFIG_FILE_DEFAULT);
+            &alter_files[2]
+        })
     };
     let config = fs::read_to_string(config_file.as_path()).map_err(|err| {
         CheckerError::CfgFileReadingError {
@@ -46,7 +42,7 @@ pub fn parse_config_file() -> Result<(Config, PathBuf), CheckerError> {
             err,
             file: config_file.to_owned(),
         })?;
-    Ok((config, config_file))
+    Ok((config, config_file.to_owned()))
 }
 
 /// Main configuration of config file
