@@ -1,8 +1,7 @@
 //! Compile program source files.
 
-use crate::checker_error::{CheckerError, Stage, BoxedCheckerError};
-use crate::config::cf_parsing;
-use crate::dyn_formatting;
+use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
+use crate::config::{cf_parsing, dynamic_format};
 use crate::TryToString;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -58,16 +57,18 @@ impl CompilationConfig {
             ("work_folder", s_work_folder.as_str()),
             ("filename_no_extension", s_filename_no_extension.as_str()),
             ("filename", s_filename.as_str()),
-        ].into();
-        let target = dyn_formatting::dynamic_format(&self.target, &target_dict, stage)?;
+        ]
+        .into();
+        let target = dynamic_format(&self.target, &target_dict, stage)?;
         let args_dict: HashMap<&str, &str> = [
             ("optimize_flag", self.optimize_flag.as_str()),
             ("file", s_file.as_str()),
             ("target", target.as_str()),
-        ].into();
+        ]
+        .into();
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());
         for arg in self.args.iter() {
-            args.push(dyn_formatting::dynamic_format(arg, &args_dict, stage)?);
+            args.push(dynamic_format(arg, &args_dict, stage)?);
         }
         Ok((target, args))
     }

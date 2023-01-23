@@ -3,11 +3,11 @@
 pub mod cf_parsing;
 mod cla_parsing;
 
-use crate::checker_error::BoxedCheckerError;
+use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
 use crate::compilation::CompilationConfig;
 use crate::launch::LaunchConfig;
-use crate::CheckerError;
 use crate::TryToString;
+use dyn_formatting::{self, DynamicFormatError};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -136,6 +136,39 @@ pub enum AutoRemoveFiles {
     Never,
 }
 
+impl AutoRemoveFiles {
+    pub fn run(
+        &self,
+        ac_launch_indexes: Vec<u32>,
+        test_cases: u32,
+        work_dir: &PathBuf,
+    ) -> Result<(), std::io::Error> {
+        use std::fs;
+        match self {
+            Self::Never => Ok(()),
+            Self::Always => {
+                for i in 1..=test_cases {
+                    fs::remove_file(work_dir.join(format!("data{}.in", i)))?;
+                    fs::remove_file(work_dir.join(format!("ac{}.out", i)))?;
+                    fs::remove_file(work_dir.join(format!("tested{}.out", i)))?;
+                }
+                Ok(())
+            }
+            Self::AC => {
+                for i in ac_launch_indexes.iter() {
+                    fs::remove_file(work_dir.join(format!("data{}.in", i)))?;
+                    fs::remove_file(work_dir.join(format!("ac{}.out", i)))?;
+                    fs::remove_file(work_dir.join(format!("tested{}.out", i)))?;
+                }
+                if ac_launch_indexes.len() == test_cases as usize {
+                    fs::remove_dir_all(work_dir)?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
 impl TryFrom<&str> for AutoRemoveFiles {
     type Error = String;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -257,7 +290,10 @@ pub enum DiffTool {
 
 pub enum DiffToolOk {
     Success,
-    Different { log_path: PathBuf, log_success: bool },
+    Different {
+        log_path: PathBuf,
+        log_success: bool,
+    },
 }
 
 impl DiffTool {
@@ -319,4 +355,50 @@ impl TryFrom<Vec<String>> for DiffTool {
             r => return Err(format!("Rule {} is not defined.", r)),
         }
     }
+}
+
+/// Simple, dynamic, Python-styled string formatting (Only support `String`,
+/// `{key}` patterns ).
+///
+/// Escape like `{{` or `}}`.
+///
+/// # Errors
+///
+/// 1. Raise `CheckerError::ArgFormattingKeyError` while the key in the brackets
+///    is not found.
+/// 2. Raise `CheckerError::ArgFormattingTokenError` while there is any
+///    unmatched bracket (`{` or `}`)
+pub fn dynamic_format(
+    pattern: &str,
+    dictionary: &HashMap<&str, &str>,
+    stage: Stage,
+) -> Result<String, BoxedCheckerError> {
+    use CheckerError::*;
+    use DynamicFormatError::*;
+    dyn_formatting::dynamic_format(pattern, dictionary).map_err(|e| {
+        if let KeyError {
+            pattern,
+            key,
+            dict_keys,
+            pos,
+        } = e
+        {
+            Box::new(ArgFormattingKeyError {
+                stage,
+                pattern,
+                key,
+                dict_keys,
+                pos,
+            })
+        } else if let TokenError { pattern, desc, pos } = e {
+            Box::new(ArgFormattingTokenError {
+                stage,
+                pattern,
+                desc,
+                pos,
+            })
+        } else {
+            unreachable!();
+        }
+    })
 }

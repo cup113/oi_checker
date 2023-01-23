@@ -3,7 +3,6 @@
 mod checker_error;
 mod compilation;
 mod config;
-mod dyn_formatting;
 mod launch;
 mod logging;
 mod os_lib;
@@ -95,9 +94,16 @@ impl OIChecker {
         compile!(data_generator, Stage::CompileDG);
         compile!(accepted_program, Stage::CompileAC);
         compile!(tested_program, Stage::CompileTP);
+
         let pool = ThreadPool::new(self.config.test_threads as usize);
         let suite_launcher: SuiteLauncher = (&*self).into();
         let (tx, rx) = mpsc::channel();
+        for i in 0..self.config.test_threads {
+            // Warmup
+            pool.execute(move || {
+                std::thread::sleep(std::time::Duration::from_millis(500 + i as u64 * 10));
+            });
+        }
         for index in 1..=self.config.test_cases {
             let suite_launcher = suite_launcher.clone();
             let tx = tx.clone();
@@ -106,11 +112,13 @@ impl OIChecker {
             });
         }
         let mut launch_result_count = (0u32, 0u32, 0u32);
+        let mut ac_launch_indexes = Vec::new();
         for _ in 1..=self.config.test_cases {
             let launch_result = rx.recv().expect("Receiver should receive");
             let log_content = match launch_result.inner {
                 LaunchSuiteEnum::AC(duration) => {
                     launch_result_count.0 += 1;
+                    ac_launch_indexes.push(launch_result.index);
                     format!("AC ({0:.3} ms)", duration.as_secs_f64() * 1000.0)
                 }
                 LaunchSuiteEnum::WA(duration, file, log_success) => {
@@ -144,7 +152,16 @@ impl OIChecker {
             console::style(launch_result_count.2).red(),
             self.config.test_cases
         ));
-        // TODO auto remove files
+        match self.config.auto_remove_files.run(
+            ac_launch_indexes,
+            self.config.test_cases,
+            &self.config.working_directory,
+        ) {
+            Ok(_) => self.logger.info("Remove files successfully."),
+            Err(err) => self
+                .logger
+                .info(&format!("Failed to remove files: {}", err)),
+        };
         Ok(())
     }
 }

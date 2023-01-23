@@ -1,5 +1,5 @@
 use crate::checker_error::{BoxedCheckerError, CheckerError, Stage};
-use crate::config::{self, cf_parsing};
+use crate::config::{self, cf_parsing, dynamic_format};
 use crate::TryToString;
 use std::path::PathBuf;
 use std::process::Command;
@@ -40,14 +40,13 @@ pub enum LaunchOk {
 impl LaunchConfig {
     /// TODO doc
     fn get_args(&self, file: &PathBuf, stage: Stage) -> Result<Vec<String>, BoxedCheckerError> {
-        use crate::dyn_formatting;
         use std::collections::HashMap;
         // to give the &str longer lifetime
         let s_file = file.try_to_string()?;
         let args_dict: HashMap<&str, &str> = [("file", s_file.as_str())].into();
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());
         for arg in self.args.iter() {
-            args.push(dyn_formatting::dynamic_format(arg, &args_dict, stage)?);
+            args.push(dynamic_format(arg, &args_dict, stage)?);
         }
         Ok(args)
     }
@@ -129,9 +128,10 @@ impl LaunchConfig {
         let _ = rx.recv();
         let start = Instant::now();
         let received = rx.recv_timeout(timeout);
+        let duration = start.elapsed();
         let _ = handle.join();
         if let Err(_) = received {
-            Ok(LaunchOk::Timeout(start.elapsed()))
+            Ok(LaunchOk::Timeout(duration))
         } else if let Ok(Err(err)) = received {
             Err(Box::new(CheckerError::CommandError {
                 stage,
@@ -141,7 +141,7 @@ impl LaunchConfig {
                 msg: format!("Error when launching: {}", err),
             }))
         } else {
-            Ok(LaunchOk::Success(start.elapsed()))
+            Ok(LaunchOk::Success(duration))
         }
     }
 }

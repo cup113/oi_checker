@@ -63,10 +63,6 @@ pub enum CheckerError {
         args: Vec<String>,
         err: io::Error,
     },
-    CleanFilesError {
-        err: io::Error,
-        path: PathBuf,
-    },
 }
 
 pub type BoxedCheckerError = Box<CheckerError>;
@@ -187,12 +183,6 @@ impl Display for CheckerError {
                     .collect::<Vec<_>>()
                     .join(" ")
             ),
-            CleanFilesError { err, path } => write!(
-                f,
-                "Failed to clean files (path: {}): {}",
-                path.display(),
-                err
-            ),
         }
     }
 }
@@ -213,7 +203,6 @@ impl CheckerError {
             CommandError { .. } => 24,
             FilterError { .. } => 25,
             DiffToolError { .. } => 26,
-            CleanFilesError { .. } => 27,
         }
     }
 

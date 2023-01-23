@@ -1,6 +1,6 @@
 [package]
 name = "oi_checker"
-version = "0.1.0-dev20230122.15"
+version = "0.2.0-alpha.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,3 +11,4 @@ toml = "0.5.10"
 serde = { version = "1.0.152", features = ["default", "derive"]}
 clap = "4.0.32"
 threadpool = "1.8.1"
+dyn_formatting = "1.0.0"
