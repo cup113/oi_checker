@@ -1,3 +1,5 @@
+//! oi_checker inner preludes
+
 pub use std::collections::HashMap;
 pub use std::fmt::Display;
 pub use std::fs::{self, File};
@@ -9,4 +11,4 @@ pub use std::thread;
 pub use std::time::{Duration, Instant};
 
 pub use crate::checker_error::{CheckerError, CheckerResult, Stage};
-pub use crate::os_lib::{TryToString, LINE_END};
+pub use crate::util::{IgnoreResult, TryToString, LINE_END};

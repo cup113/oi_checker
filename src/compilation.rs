@@ -1,7 +1,7 @@
 //! Compile program source files.
 
-use crate::prelude::*;
 use crate::config::{cf_parsing, dynamic_format};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct CompilationConfig {
@@ -69,7 +69,7 @@ impl CompilationConfig {
         Ok((target, args))
     }
 
-    /// TODO doc
+    /// Compile the program with the config.
     pub fn run(
         &self,
         work_folder: &PathBuf,
@@ -77,27 +77,24 @@ impl CompilationConfig {
         stage: Stage,
     ) -> CheckerResult<String> {
         let (target, args) = self.get_args(work_folder, file, stage)?;
+        let error = |msg: String| {
+            Box::new(CheckerError::CommandError {
+                stage,
+                command: self.command.to_owned(),
+                args: args.to_owned(),
+                file: file.to_owned(),
+                msg,
+            })
+        };
         let output = Command::new(&self.command)
             .stderr(Stdio::inherit())
             .args(args.clone())
             .output()
-            .map_err(|e| CheckerError::CommandError {
-                stage,
-                command: self.command.to_owned(),
-                args: args.to_owned(),
-                file: file.to_owned(),
-                msg: format!("IOError: {}", e.to_string()),
-            })?;
+            .map_err(|e| error(format!("IOError: {}", e.to_string())))?;
         if output.status.success() {
             Ok(target)
         } else {
-            Err(Box::new(CheckerError::CommandError {
-                stage,
-                command: self.command.to_owned(),
-                args: args.to_owned(),
-                file: file.to_owned(),
-                msg: format!("Compiler exited with {}", output.status),
-            }))
+            Err(error(format!("Compiler exited with {}", output.status)))
         }
     }
 }

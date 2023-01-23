@@ -10,11 +10,10 @@ pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
     let program_dir = env::current_exe()
         .expect("Can't get env::current_exe")
         .parent()
-        .unwrap()
-        .to_path_buf();
-    let current_dir = env::current_dir().expect("Can't get env::current_dir");
-    let alter_files = [
-        current_dir.join("oi_checker_config.toml"),
+        .expect("Program can't BE root directory")
+        .to_owned();
+    let alter_files: [PathBuf; 3] = [
+        "oi_checker_config.toml".into(),
         program_dir.join("config.toml"),
         program_dir.join("config_default.toml"),
     ];
@@ -27,10 +26,11 @@ pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
             }
         }
         config_file.unwrap_or({
-            let _ = fs::write(&alter_files[2], crate::config::CONFIG_FILE_DEFAULT);
+            fs::write(&alter_files[2], crate::config::CONFIG_FILE_DEFAULT).ignore();
             &alter_files[2]
         })
     };
+
     let config = fs::read_to_string(config_file.as_path()).map_err(|err| {
         CheckerError::CfgFileReadingError {
             err,

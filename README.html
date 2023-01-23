@@ -1,45 +1,87 @@
-<h1 id="oi-checker-readme">OI-Checker README</h1>
-<p>可灵活配置的 OI 自动对拍器。</p>
-<p>项目处于开发阶段，可能会发生破坏性改动。</p>
-<p><a href="https://wakatime.com/badge/user/b039f61c-2701-482d-9f84-542f07630e52/project/d4ca9e8d-4006-440d-92c7-b95b26fda0e5"><img src="https://wakatime.com/badge/user/b039f61c-2701-482d-9f84-542f07630e52/project/d4ca9e8d-4006-440d-92c7-b95b26fda0e5.svg" alt="wakatime"></a>
-<a href="https://github.com/cup113/oi_checker"><img src="https://img.shields.io/github/languages/code-size/cup113/oi_checker" alt="GitHub repo size"></a>
-<a href="https://github.com/cup113/oi_checker"><img src="https://img.shields.io/github/v/release/cup113/oi_checker?include_prereleases" alt="Latest version"></a>
-<a href="https://github.com/cup113/oi_checker"><img src="https://img.shields.io/github/license/cup113/oi_checker" alt="MIT License"></a></p>
-<h2 id="usage">Usage</h2>
-<pre><code>An OI Checker. To get more information, please see README.html
+<!DOCTYPE html>
+<html lang="zh-CN">
 
-Usage: oi_checker.exe [OPTIONS]
+<head>
+    <meta charset="UTF-8">
+    <title>OI-Checker README</title>
+    <style>
+        /* From extension vscode.github */
+        /*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+        .vscode-dark img[src$=\#gh-light-mode-only],
+        .vscode-light img[src$=\#gh-dark-mode-only] {
+            display: none;
+        }
+    </style>
+
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+    <style>
+        .task-list-item {
+            list-style-type: none;
+        }
+
+        .task-list-item-checkbox {
+            margin-left: -20px;
+            vertical-align: middle;
+            pointer-events: none;
+        }
+    </style>
+
+</head>
+
+<body class="vscode-body vscode-light">
+    <h1 id="oi-checker-readme">OI-Checker README</h1>
+    <p>可灵活配置的 OI 自动对拍器。</p>
+    <p>项目处于开发阶段，可能会发生破坏性改动。</p>
+    <p><a
+            href="https://wakatime.com/badge/user/b039f61c-2701-482d-9f84-542f07630e52/project/d4ca9e8d-4006-440d-92c7-b95b26fda0e5"><img
+                src="https://wakatime.com/badge/user/b039f61c-2701-482d-9f84-542f07630e52/project/d4ca9e8d-4006-440d-92c7-b95b26fda0e5.svg"
+                alt="wakatime"></a>
+        <a href="https://github.com/cup113/oi_checker"><img
+                src="https://img.shields.io/github/languages/code-size/cup113/oi_checker" alt="GitHub repo size"></a>
+        <a href="https://github.com/cup113/oi_checker"><img
+                src="https://img.shields.io/github/v/release/cup113/oi_checker?include_prereleases"
+                alt="Latest version"></a>
+        <a href="https://github.com/cup113/oi_checker"><img
+                src="https://img.shields.io/github/license/cup113/oi_checker" alt="MIT License"></a>
+    </p>
+    <h2 id="usage">Usage</h2>
+    <pre><code>Usage: oi_checker.exe [OPTIONS]
 
 Options:
-  -t, --tested &lt;FILE&gt;
-
-  -a, --accepted &lt;FILE&gt;
-
-  -g, --generator &lt;FILE&gt;
-
-  -c, --cases &lt;MILLISECONDS&gt;
-
-  -r, --threads &lt;NUMBER&gt;
-
-  -m, --ac-timeout &lt;MILLISECONDS&gt;
-
-  -e, --program-timeout &lt;MILLISECONDS&gt;
-
-  -d, --working-dir &lt;MILLISECONDS&gt;
-
-  -u, --auto-remove-files &lt;ac|always|never&gt;
-          [possible values: ac, always, never]
-  -f, --output-filters &lt;FILTERS&gt;
-          [possible values: strip-trailing-whitespace, strip-trailing-empty-lines, strip-all-whitespace]
-  -i, --diff-tool &lt;TOOL&gt;
-
-      --get-default-config
-
-  -h, --help
-          Print help
-  -V, --version
-          Print version
+  -t, --tested &lt;FILE&gt;                   The program which will be tested.
+  -a, --accepted &lt;FILE&gt;                 The program which output correct answers.
+  -g, --generator &lt;FILE&gt;                The program which generate data.
+  -c, --cases &lt;MILLISECONDS&gt;            Number of test cases. Each starts a test suite.
+  -r, --threads &lt;NUMBER&gt;                Concurrent threads numbers.
+  -m, --ac-timeout &lt;MILLISECONDS&gt;       If the tested program doesn't finish in this duration (in milliseconds), the result will be TLE.
+  -e, --program-timeout &lt;MILLISECONDS&gt;  If any program of a test suite doesn't finish in this duration (in milliseconds), this suite will be terminated and the result will be Unknown.
+  -d, --working-dir &lt;MILLISECONDS&gt;      The directory which stores data files and compiled files.
+  -u, --auto-remove-files &lt;STRING&gt;      See `config_default.toml` for more information. [possible values: ac, always, never]
+  -f, --output-filters &lt;FILTERS&gt;        See `config_default.toml` for more information. Split values with ',' [possible values: strip-trailing-whitespace, strip-trailing-empty-lines, strip-all-whitespace]
+  -i, --diff-tool &lt;TOOL&gt;                See `config_default.toml` for more information. Split items with ';'
+      --get-default-config              Print the default config.
+  -h, --help                            Print help
+  -V, --version                         Print version
 </code></pre>
-<h2 id="config">Config</h2>
-<p>详见<code>config_default.toml</code>。</p>
+    <h2 id="config">Config</h2>
+    <p>详见<code>config_default.toml</code>。</p>
 
+
+
+</body>
+
+</html>

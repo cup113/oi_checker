@@ -10,9 +10,11 @@
 tested_program = "tested.cpp"
 
 # The program which output correct answers.
+# Value: String(Path)
 accepted_program = "accepted.cpp"
 
 # The program which generate data.
+# Value: String(Path)
 data_generator = "data_generator.py"
 
 # Number of test cases. Each starts a test suite.
@@ -20,7 +22,7 @@ data_generator = "data_generator.py"
 # Value: u32, >=1
 test_cases = 20
 
-# Concurrent numbers.
+# Concurrent threads numbers.
 # (Should be implemented with multiprocessing only in Python because of the GIL)
 # Recommended: An integer between 1 and 16
 # Value: u32, >=1, <=255
@@ -38,8 +40,7 @@ ac_timeout = 1000
 program_timeout = 3000
 
 # The directory which stores data files and compiled files.
-# Recommended: Folder name, excludes "."
-# Value: string, a valid directory name
+# Value: string, a valid directory name, excludes "."
 working_directory = "checking"
 
 # Explanation ("related files" means one input file and two output files):

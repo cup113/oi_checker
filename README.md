@@ -12,39 +12,23 @@
 ## Usage
 
 ```
-An OI Checker. To get more information, please see README.html
-
 Usage: oi_checker.exe [OPTIONS]
 
 Options:
-  -t, --tested <FILE>
-
-  -a, --accepted <FILE>
-
-  -g, --generator <FILE>
-
-  -c, --cases <MILLISECONDS>
-
-  -r, --threads <NUMBER>
-
-  -m, --ac-timeout <MILLISECONDS>
-
-  -e, --program-timeout <MILLISECONDS>
-
-  -d, --working-dir <MILLISECONDS>
-
-  -u, --auto-remove-files <ac|always|never>
-          [possible values: ac, always, never]
-  -f, --output-filters <FILTERS>
-          [possible values: strip-trailing-whitespace, strip-trailing-empty-lines, strip-all-whitespace]
-  -i, --diff-tool <TOOL>
-
-      --get-default-config
-
-  -h, --help
-          Print help
-  -V, --version
-          Print version
+  -t, --tested <FILE>                   The program which will be tested.
+  -a, --accepted <FILE>                 The program which output correct answers.
+  -g, --generator <FILE>                The program which generate data.
+  -c, --cases <MILLISECONDS>            Number of test cases. Each starts a test suite.
+  -r, --threads <NUMBER>                Concurrent threads numbers.
+  -m, --ac-timeout <MILLISECONDS>       If the tested program doesn't finish in this duration (in milliseconds), the result will be TLE.
+  -e, --program-timeout <MILLISECONDS>  If any program of a test suite doesn't finish in this duration (in milliseconds), this suite will be terminated and the result will be Unknown.
+  -d, --working-dir <MILLISECONDS>      The directory which stores data files and compiled files.
+  -u, --auto-remove-files <STRING>      See `config_default.toml` for more information. [possible values: ac, always, never]
+  -f, --output-filters <FILTERS>        See `config_default.toml` for more information. Split values with ',' [possible values: strip-trailing-whitespace, strip-trailing-empty-lines, strip-all-whitespace]
+  -i, --diff-tool <TOOL>                See `config_default.toml` for more information. Split items with ';'
+      --get-default-config              Print the default config.
+  -h, --help                            Print help
+  -V, --version                         Print version
 ```
 
 ## Config

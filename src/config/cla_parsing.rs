@@ -21,6 +21,7 @@ pub fn parse_cla() -> ClaConfig {
             't',
             "FILE",
             PathBufValueParser::new(),
+            "The program which will be tested.",
         ))
         .arg(make_arg(
             "accepted-program",
@@ -28,6 +29,7 @@ pub fn parse_cla() -> ClaConfig {
             'a',
             "FILE",
             PathBufValueParser::new(),
+            "The program which output correct answers.",
         ))
         .arg(make_arg(
             "data-generator",
@@ -35,6 +37,7 @@ pub fn parse_cla() -> ClaConfig {
             'g',
             "FILE",
             PathBufValueParser::new(),
+            "The program which generate data.",
         ))
         .arg(make_arg(
             "test-cases",
@@ -42,13 +45,15 @@ pub fn parse_cla() -> ClaConfig {
             'c',
             "MILLISECONDS",
             RangedU64ValueParser::<u32>::new().range(1..),
+            "Number of test cases. Each starts a test suite.",
         ))
         .arg(make_arg(
             "test-threads",
             "threads",
             'r',
             "NUMBER",
-            RangedU64ValueParser::<u32>::new().range(1..=125),
+            RangedU64ValueParser::<u32>::new().range(1..=255),
+            "Concurrent threads numbers.",
         ))
         .arg(make_arg(
             "ac-timeout",
@@ -56,6 +61,8 @@ pub fn parse_cla() -> ClaConfig {
             'm',
             "MILLISECONDS",
             RangedU64ValueParser::<u64>::new().range(1..),
+            "If the tested program doesn't finish in this duration \
+            (in milliseconds), the result will be TLE.",
         ))
         .arg(make_arg(
             "program-timeout",
@@ -63,6 +70,9 @@ pub fn parse_cla() -> ClaConfig {
             'e',
             "MILLISECONDS",
             RangedU64ValueParser::<u64>::new().range(1..),
+            "If any program of a test suite doesn't finish in this duration \
+            (in milliseconds), this suite will be terminated \
+            and the result will be Unknown.",
         ))
         .arg(make_arg(
             "working-directory",
@@ -70,13 +80,15 @@ pub fn parse_cla() -> ClaConfig {
             'd',
             "MILLISECONDS",
             PathBufValueParser::new(),
+            "The directory which stores data files and compiled files.",
         ))
         .arg(make_arg(
             "auto-remove-files",
             "auto-remove-files",
             'u',
-            "ac|always|never",
+            "STRING",
             ["ac", "always", "never"],
+            "See `config_default.toml` for more information.",
         ))
         .arg(
             Arg::new("output-filters")
@@ -88,7 +100,11 @@ pub fn parse_cla() -> ClaConfig {
                     "strip-trailing-whitespace",
                     "strip-trailing-empty-lines",
                     "strip-all-whitespace",
-                ]),
+                ])
+                .help(
+                    "See `config_default.toml` for more information. \
+                    Split values with ','",
+                ),
         )
         .arg(
             Arg::new("diff-tool")
@@ -96,24 +112,38 @@ pub fn parse_cla() -> ClaConfig {
                 .short('i')
                 .value_name("TOOL")
                 .value_delimiter(';')
-                .value_parser(NonEmptyStringValueParser::new()),
+                .value_parser(NonEmptyStringValueParser::new())
+                .help(
+                    "See `config_default.toml` for more information. \
+                    Split items with ';'",
+                ),
         )
         .arg(
             Arg::new("get-default-config")
                 .long("get-default-config")
-                .action(ArgAction::SetTrue),
+                .action(ArgAction::SetTrue)
+                .help("Print the default config."),
         );
     let matches = app.get_matches();
     if matches.get_flag("get-default-config") {
         println!("{}", crate::config::CONFIG_FILE_DEFAULT);
         std::process::exit(0);
     }
+
+    /// Get an usual config item
     macro_rules! get_one {
         ($id: expr, $tp: ty) => {{
             let result: Option<$tp> = matches.get_one($id).map(|s: &$tp| s.to_owned());
             result
         }};
     }
+
+    let get_many_string = |id: &str| -> Option<Vec<String>> {
+        matches.get_many(id).map(|values_ref: ValuesRef<String>| {
+            values_ref.map(|value_ref| value_ref.to_owned()).collect()
+        })
+    };
+
     let tested_program = get_one!("tested-program", PathBuf);
     let accepted_program = get_one!("accepted-program", PathBuf);
     let data_generator = get_one!("data-generator", PathBuf);
@@ -123,18 +153,8 @@ pub fn parse_cla() -> ClaConfig {
     let program_timeout = get_one!("program-timeout", u64);
     let working_directory = get_one!("working-directory", PathBuf);
     let auto_remove_files = get_one!("auto-remove-files", String);
-    let output_filters = matches
-        .get_many("output-filters")
-        .map(|f: ValuesRef<String>| {
-            f.to_owned()
-                .map(|s: &String| s.to_owned())
-                .collect::<Vec<_>>()
-        });
-    let diff_tool = matches.get_many("diff-tool").map(|f: ValuesRef<String>| {
-        f.to_owned()
-            .map(|s: &String| s.to_owned())
-            .collect::<Vec<_>>()
-    });
+    let output_filters = get_many_string("output-filters");
+    let diff_tool = get_many_string("diff-tool");
     ClaConfig {
         tested_program,
         accepted_program,
@@ -173,6 +193,7 @@ fn make_arg(
     short: char,
     value_name: &'static str,
     value_parser: impl IntoResettable<ValueParser>,
+    help: &'static str,
 ) -> Arg {
     Arg::new(id)
         .action(ArgAction::Set)
@@ -180,9 +201,5 @@ fn make_arg(
         .short(short)
         .value_name(value_name)
         .value_parser(value_parser)
-}
-
-#[cfg(test)]
-mod tests {
-    // TODO make tests
+        .help(help)
 }

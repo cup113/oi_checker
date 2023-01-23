@@ -1,4 +1,6 @@
 //! Customized single-threaded terminal logger module based on `console`.
+//! It can be embed into a program and change its config.
+
 use console::Style;
 use std::{fmt::Display, time::Instant};
 
@@ -105,11 +107,5 @@ impl Logger {
         let s = Style::new().red().on_white().bold().underlined();
         let c = s.apply_to(content);
         self.error_log(&Level::Fatal, &c);
-    }
-    pub fn panic_fatal<T: Display + ?Sized>(&self, content: &T) -> ! {
-        let s = Style::new().red().on_white().bold().underlined();
-        let c = s.apply_to(content);
-        self.error_log(&Level::Fatal, &c);
-        panic!("{}", content);
     }
 }

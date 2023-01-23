@@ -49,7 +49,7 @@ pub enum CheckerError {
         msg: String,
     },
     FilterError {
-        filter: crate::config::OutputFilter,
+        filter: crate::filter::OutputFilter,
         err: io::Error,
         file: PathBuf,
     },
@@ -62,6 +62,15 @@ pub enum CheckerError {
 
 pub type BoxedCheckerError = Box<CheckerError>;
 pub type CheckerResult<T> = Result<T, BoxedCheckerError>;
+
+impl CheckerError {
+    /// Print the error message to `stderr` and exit with the provided code
+    pub fn destruct(&self) -> ! {
+        use std::process;
+        eprintln!("{}", self);
+        process::exit(1);
+    }
+}
 
 impl Display for CheckerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -175,14 +184,7 @@ impl Display for CheckerError {
     }
 }
 
-impl CheckerError {
-    /// Print the error message to `stderr` and exit with the provided code
-    pub fn destruct(&self) -> ! {
-        use std::process;
-        eprintln!("{}", self);
-        process::exit(1);
-    }
-}
+impl std::error::Error for CheckerError {}
 
 /// Which stage the error occurs
 #[derive(Debug, Clone, Copy)]

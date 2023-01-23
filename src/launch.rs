@@ -1,5 +1,8 @@
+//! Main module: Launch the programs.
+
+use crate::config::{cf_parsing, dynamic_format};
+use crate::diff_tool;
 use crate::prelude::*;
-use crate::config::{self, cf_parsing, dynamic_format};
 
 #[derive(Debug, Clone)]
 pub struct LaunchConfig {
@@ -32,7 +35,7 @@ pub enum LaunchOk {
 }
 
 impl LaunchConfig {
-    /// TODO doc
+    /// Get the arguments
     fn get_args(&self, file: &PathBuf, stage: Stage) -> CheckerResult<Vec<String>> {
         // to give the &str longer lifetime
         let s_file = file.try_to_string()?;
@@ -55,8 +58,8 @@ impl LaunchConfig {
         let mut child = match command.spawn() {
             Ok(output) => output,
             Err(e) => {
-                let _ = tx.send(Ok(()));
-                let _ = tx.send(Err(e));
+                tx.send(Ok(())).ignore();
+                tx.send(Err(e)).ignore();
                 return;
             }
         };
@@ -64,25 +67,25 @@ impl LaunchConfig {
             let input_buf = match fs::read(input_file) {
                 Ok(input_buf) => input_buf,
                 Err(e) => {
-                    let _ = tx.send(Ok(()));
-                    let _ = tx.send(Err(e));
+                    tx.send(Ok(())).ignore();
+                    tx.send(Err(e)).ignore();
                     return;
                 }
             };
             let input_buf = input_buf.as_slice();
             let mut child_stdin = child.stdin.take().expect("Stdin not piped");
-            let _ = child_stdin.write(input_buf);
+            child_stdin.write(input_buf).ignore();
         }
-        let _ = tx.send(Ok(()));
+        tx.send(Ok(())).ignore();
         let output = match child.wait_with_output() {
             Ok(output) => output,
             Err(e) => {
-                let _ = tx.send(Err(e));
+                tx.send(Err(e)).ignore();
                 return;
             }
         };
-        let _ = tx.send(Ok(()));
-        let _ = fs::write(output_file, output.stdout);
+        tx.send(Ok(())).ignore();
+        fs::write(output_file, output.stdout).ignore();
     }
 
     /// TODO doc
@@ -115,11 +118,11 @@ impl LaunchConfig {
         let handle = thread::spawn(move || {
             Self::run_inner(command, &_input_file, &_output_file, tx);
         });
-        let _ = rx.recv();
+        rx.recv().ignore();
         let start = Instant::now();
         let received = rx.recv_timeout(timeout);
         let duration = start.elapsed();
-        let _ = handle.join();
+        handle.join().ignore();
         if let Err(_) = received {
             Ok(LaunchOk::Timeout(duration))
         } else if let Ok(Err(err)) = received {
@@ -146,11 +149,18 @@ pub struct SuiteLauncher {
     data_generator: PathBuf,
     accepted_program: PathBuf,
     tested_program: PathBuf,
-    output_filters: Vec<config::OutputFilter>,
-    diff_tool: config::DiffTool,
+    output_filters: Vec<crate::filter::OutputFilter>,
+    diff_tool: crate::diff_tool::DiffTool,
 }
 
 impl SuiteLauncher {
+    pub fn run_suite(&self, index: u32, tx: mpsc::Sender<LaunchSuiteResult>) {
+        tx.send(LaunchSuiteResult {
+            index,
+            inner: self.run_suite_inner(index),
+        })
+        .expect("Sender should send successfully");
+    }
     /// TODO doc
     fn run_one(
         &self,
@@ -215,6 +225,9 @@ impl SuiteLauncher {
                 return LaunchSuiteEnum::UK(format!("Launch tested program failed: {}", err))
             }
         };
+        if tp_duration > self.program_timeout {
+            return LaunchSuiteEnum::TLE(tp_duration);
+        }
 
         let ac_result = self.run_one(
             &self.accepted_program,
@@ -248,11 +261,11 @@ impl SuiteLauncher {
         );
         match diff_result {
             Ok(diff_ok) => match diff_ok {
-                config::DiffToolOk::Different {
+                diff_tool::DiffToolOk::Different {
                     log_path,
                     log_success,
                 } => return LaunchSuiteEnum::WA(tp_duration, log_path, log_success),
-                config::DiffToolOk::Success => (),
+                diff_tool::DiffToolOk::Success => (),
             },
             Err(err) => return LaunchSuiteEnum::UK(format!("Different tool failed: {}", err)),
         }
@@ -262,21 +275,15 @@ impl SuiteLauncher {
             LaunchSuiteEnum::TLE(tp_duration)
         }
     }
-
-    pub fn run_suite(&self, index: u32, tx: mpsc::Sender<LaunchSuiteResult>) {
-        tx.send(LaunchSuiteResult {
-            index,
-            inner: self.run_suite_inner(index),
-        })
-        .expect("Sender should send successfully");
-    }
 }
 
+/// The result of launching a suite.
 pub struct LaunchSuiteResult {
     pub index: u32,
     pub inner: LaunchSuiteEnum,
 }
 
+/// The inner enum of `LaunchSuiteEnum`.
 pub enum LaunchSuiteEnum {
     AC(Duration),
     WA(Duration, PathBuf, bool),
@@ -286,17 +293,18 @@ pub enum LaunchSuiteEnum {
 
 impl From<&crate::OIChecker> for SuiteLauncher {
     fn from(value: &crate::OIChecker) -> Self {
+        let c = &value.config;
         Self {
-            rules: value.config.launch_rules.to_owned(),
-            test_cases: value.config.test_cases,
-            program_timeout: value.config.program_timeout,
-            accepted_timeout: value.config.ac_timeout,
-            working_directory: value.config.working_directory.to_owned(),
-            data_generator: value.config.data_generator.to_owned(),
-            accepted_program: value.config.accepted_program.to_owned(),
-            tested_program: value.config.tested_program.to_owned(),
-            output_filters: value.config.output_filters.to_owned(),
-            diff_tool: value.config.diff_tool.to_owned(),
+            rules: c.launch_rules.to_owned(),
+            test_cases: c.test_cases,
+            program_timeout: c.program_timeout,
+            accepted_timeout: c.ac_timeout,
+            working_directory: c.working_directory.to_owned(),
+            data_generator: c.data_generator.to_owned(),
+            accepted_program: c.accepted_program.to_owned(),
+            tested_program: c.tested_program.to_owned(),
+            output_filters: c.output_filters.to_owned(),
+            diff_tool: c.diff_tool.to_owned(),
         }
     }
 }
