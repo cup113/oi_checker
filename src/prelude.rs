@@ -11,4 +11,4 @@ pub use std::thread;
 pub use std::time::{Duration, Instant};
 
 pub use crate::checker_error::{CheckerError, CheckerResult, Stage};
-pub use crate::util::{IgnoreResult, TryToString, LINE_END};
+pub use crate::util::{IgnoreResult, LINE_END};

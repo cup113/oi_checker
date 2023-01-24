@@ -3,15 +3,12 @@
 //! Also provide display & exit code
 
 use crate::prelude::{io, Display, PathBuf};
-use std::ffi::OsString;
+use std::borrow::Cow;
 use toml;
 
 /// All error variants in OI Checker
 #[derive(Debug)]
 pub enum CheckerError {
-    OsStrUtf8Error {
-        s: OsString,
-    },
     CfgFileReadingError {
         err: io::Error,
         file: PathBuf,
@@ -49,7 +46,7 @@ pub enum CheckerError {
         msg: String,
     },
     FilterError {
-        filter: crate::filter::OutputFilter,
+        filter: crate::launch::filter::OutputFilter,
         err: io::Error,
         file: PathBuf,
     },
@@ -67,8 +64,35 @@ impl CheckerError {
     /// Print the error message to `stderr` and exit with the provided code
     pub fn destruct(&self) -> ! {
         use std::process;
-        eprintln!("{}", self);
+        crate::LOGGER.fatal(&self.to_string());
+        crate::LOGGER.info(&format!("Help: {}", self.get_help()));
         process::exit(1);
+    }
+
+    pub fn get_help<'a>(&'a self) -> std::borrow::Cow<'a, str> {
+        use Cow::{Borrowed, Owned};
+        match self {
+            Self::CfgFileReadingError { .. } => Borrowed("Check file permission."),
+            Self::CfgFileParsingError { .. } => Borrowed(
+                "Check if the file is TOML grammatical and has all the fields \
+                and correspond types.",
+            ),
+            Self::CfgIntegrateError { .. } => Borrowed("Check if the value is legal (in options)."),
+            Self::CreateWorkDirError { .. } => {
+                Borrowed("Check directory permission. Avoid using nested path.")
+            }
+            Self::ArgFormattingTokenError { .. } => Borrowed("Correct the grammar of formatting"),
+            Self::ArgFormattingKeyError { dict_keys, .. } => {
+                Owned(format!("Possible keys are: {}", dict_keys.join(",")))
+            }
+            Self::CommandError { .. } => Borrowed("Check your program or config."),
+            Self::FilterError { .. } => {
+                Borrowed("This error shouldn't occur, it's a TOC-TOU error.")
+            }
+            Self::DiffToolError { .. } => {
+                Borrowed("Please check if the different tool program exists.")
+            }
+        }
     }
 }
 
@@ -76,38 +100,21 @@ impl Display for CheckerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use CheckerError::*;
         match self {
-            OsStrUtf8Error { s } => write!(
-                f,
-                "Invalid non-UTF-8 string: {}.\n\
-                Help: Make sure path names consist of legal UTF-8 characters.",
-                s.to_string_lossy()
-            ),
-            CfgFileReadingError { err, file } => write!(
-                f,
-                "Read config file ({}) failed:\n{}\n\
-                Help: Check file permission.",
-                file.display(),
-                err
-            ),
-            CfgFileParsingError { err, file } => write!(
-                f,
-                "Parse config file ({}) failed:\n{}\n\
-                Help: Check if the file is TOML grammatical and has all of the \
-                fields and correspond types.",
-                file.display(),
-                err
-            ),
+            CfgFileReadingError { err, file } => {
+                write!(f, "Read config file ({}) failed:\n{}", file.display(), err)
+            }
+            CfgFileParsingError { err, file } => {
+                write!(f, "Parse config file ({}) failed:\n{}", file.display(), err)
+            }
             CfgIntegrateError { msg, file_source } => write!(
                 f,
-                "Error when integrating config (file source: {}): {}\n\
-                Help: Check if the value is legal (in options).",
+                "Error when integrating config (file source: {}): {}",
                 file_source.display(),
                 msg
             ),
             CreateWorkDirError { err, dir } => write!(
                 f,
-                "Error when creating working directory ({}): {}\n\
-                Help: Check directory permission. Avoid using nested path.",
+                "Error when creating working directory ({}): {}",
                 dir.display(),
                 err
             ),
@@ -119,26 +126,20 @@ impl Display for CheckerError {
             } => write!(
                 f,
                 "Error when parsing arguments during {}: Token Error ({}) when \
-                parsing pattern \"{}\" at pos {}.\n\
-                Help: Correct the grammar of formatting",
+                parsing pattern \"{}\" at pos {}.\n",
                 stage, desc, pattern, pos
             ),
             ArgFormattingKeyError {
                 stage,
                 pattern,
                 key,
-                dict_keys,
                 pos,
+                ..
             } => write!(
                 f,
                 "Error when parsing arguments during {}: Key Not Found \
-                (key: \"{}\") when parsing pattern \"{}\" at pos {}.\n\
-                Help: Possible keys are: {}",
-                stage,
-                key,
-                pattern,
-                pos,
-                dict_keys.join(","),
+                (key: \"{}\") when parsing pattern \"{}\" at pos {}.",
+                stage, key, pattern, pos,
             ),
             CommandError {
                 stage,
@@ -149,8 +150,7 @@ impl Display for CheckerError {
             } => write!(
                 f,
                 "Error during {} (file: {}): {}.\n\
-                Command: \"{}\" {}\n\
-                Help: Check your program or config.",
+                Command: \"{}\" {}",
                 stage,
                 file.display(),
                 msg,
@@ -162,8 +162,7 @@ impl Display for CheckerError {
             ),
             FilterError { filter, err, file } => write!(
                 f,
-                "Error during filtering file {} (filter: {}): {}\n\
-                Help: This error shouldn't occur.",
+                "Error during filtering file {} (filter: {}): {}",
                 file.display(),
                 filter,
                 err
@@ -171,8 +170,7 @@ impl Display for CheckerError {
             DiffToolError { command, args, err } => write!(
                 f,
                 "Error during comparing files: {}\n\
-                Command: \"{}\" {}\n\
-                Help: Please check if the different tool program exists.",
+                Command: \"{}\" {}\n",
                 err,
                 command,
                 args.iter()

@@ -9,9 +9,11 @@
 [![Latest version](https://img.shields.io/github/v/release/cup113/oi_checker?include_prereleases)](https://github.com/cup113/oi_checker)
 [![MIT License](https://img.shields.io/github/license/cup113/oi_checker)](https://github.com/cup113/oi_checker)
 
-## Usage
+## 命令行参数
 
 ```
+An OI Checker. To get more information, please see README.html
+
 Usage: oi_checker.exe [OPTIONS]
 
 Options:
@@ -31,6 +33,21 @@ Options:
   -V, --version                         Print version
 ```
 
-## Config
+## 配置文件
 
 详见`config_default.toml`。
+
+## 使用步骤
+
+1. 安装程序。
+2. 将程序所在目录添加至 `PATH` 中。
+3. 将程序平级的 `config_default.toml` 复制一份到 `config.toml` ，并根据喜好进行修改。
+4. 根据命令行参数使用
+  - 注: 若需要为一个项目单独设一套配置，可运行命令
+    `oi_checker --get-default-config > oi_checker_config.toml` ，然后进行修改。
+
+## 程序运行流程
+
+大致流程详见`state_diagrams/overview.mmd`
+
+TODO

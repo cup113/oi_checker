@@ -1,7 +1,10 @@
 //! Main module: Launch the programs.
+//! #TODO check logic
+
+pub mod diff_tool;
+pub mod filter;
 
 use crate::config::{cf_parsing, dynamic_format};
-use crate::diff_tool;
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -38,8 +41,8 @@ impl LaunchConfig {
     /// Get the arguments
     fn get_args(&self, file: &PathBuf, stage: Stage) -> CheckerResult<Vec<String>> {
         // to give the &str longer lifetime
-        let s_file = file.try_to_string()?;
-        let args_dict: HashMap<&str, &str> = [("file", s_file.as_str())].into();
+        let s_file = file.to_string_lossy();
+        let args_dict: HashMap<&str, &str> = [("file", &*s_file)].into();
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());
         for arg in self.args.iter() {
             args.push(dynamic_format(arg, &args_dict, stage)?);
@@ -103,7 +106,10 @@ impl LaunchConfig {
             args.extend(extra_args);
             args
         };
-        let program = self.command.clone().unwrap_or(file.try_to_string()?);
+        let program = self
+            .command
+            .clone()
+            .unwrap_or(file.to_string_lossy().to_string());
         let (tx, rx) = mpsc::channel();
         let command: Command = {
             let mut command = Command::new(program.to_owned());
@@ -149,8 +155,8 @@ pub struct SuiteLauncher {
     data_generator: PathBuf,
     accepted_program: PathBuf,
     tested_program: PathBuf,
-    output_filters: Vec<crate::filter::OutputFilter>,
-    diff_tool: crate::diff_tool::DiffTool,
+    output_filters: Vec<filter::OutputFilter>,
+    diff_tool: diff_tool::DiffTool,
 }
 
 impl SuiteLauncher {
@@ -173,7 +179,7 @@ impl SuiteLauncher {
         let default_launch_rule = LaunchConfig::default();
         let launch_rule = if let Some(ext) = program.extension() {
             self.rules
-                .get_rule(&ext.try_to_string()?)
+                .get_rule(&ext.to_string_lossy().to_string())
                 .unwrap_or(&default_launch_rule)
         } else {
             &default_launch_rule
@@ -263,9 +269,9 @@ impl SuiteLauncher {
             Ok(diff_ok) => match diff_ok {
                 diff_tool::DiffToolOk::Different {
                     log_path,
-                    log_success,
-                } => return LaunchSuiteEnum::WA(tp_duration, log_path, log_success),
-                diff_tool::DiffToolOk::Success => (),
+                    log_result,
+                } => return LaunchSuiteEnum::WA(tp_duration, log_path, log_result),
+                diff_tool::DiffToolOk::Same => (),
             },
             Err(err) => return LaunchSuiteEnum::UK(format!("Different tool failed: {}", err)),
         }
@@ -286,7 +292,7 @@ pub struct LaunchSuiteResult {
 /// The inner enum of `LaunchSuiteEnum`.
 pub enum LaunchSuiteEnum {
     AC(Duration),
-    WA(Duration, PathBuf, bool),
+    WA(Duration, PathBuf, io::Result<()>),
     TLE(Duration),
     UK(String),
 }

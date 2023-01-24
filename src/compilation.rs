@@ -45,21 +45,21 @@ impl CompilationConfig {
             }
         };
         // to give the &str longer lifetime
-        let s_filename_no_extension = filename_no_extension.try_to_string()?;
-        let s_work_folder = work_folder.try_to_string()?;
-        let s_filename = file.file_name().unwrap_or_default().try_to_string()?;
-        let s_file = file.try_to_string()?;
+        let s_filename_no_extension = filename_no_extension.to_string_lossy();
+        let s_work_folder = work_folder.to_string_lossy();
+        let s_filename = file.file_name().unwrap_or_default().to_string_lossy();
+        let s_file = file.to_string_lossy();
         let target_dict: HashMap<&str, &str> = [
-            ("work_folder", s_work_folder.as_str()),
-            ("filename_no_extension", s_filename_no_extension.as_str()),
-            ("filename", s_filename.as_str()),
+            ("work_folder", &*s_work_folder),
+            ("filename_no_extension", &*s_filename_no_extension),
+            ("filename", &*s_filename),
         ]
         .into();
         let target = dynamic_format(&self.target, &target_dict, stage)?;
         let args_dict: HashMap<&str, &str> = [
             ("optimize_flag", self.optimize_flag.as_str()),
-            ("file", s_file.as_str()),
-            ("target", target.as_str()),
+            ("file", &*s_file),
+            ("target", &*target),
         ]
         .into();
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());

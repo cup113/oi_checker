@@ -7,8 +7,8 @@ use crate::prelude::*;
 
 use crate::clean_files::AutoRemoveFiles;
 use crate::compilation::CompilationConfig;
-use crate::diff_tool::DiffTool;
-use crate::filter::OutputFilter;
+use crate::launch::diff_tool::DiffTool;
+use crate::launch::filter::OutputFilter;
 use crate::launch::LaunchConfig;
 use dyn_formatting::{self, DynamicFormatError};
 
@@ -68,11 +68,6 @@ pub fn get_config() -> CheckerResult<Config> {
         .map(|c| (c.ext.clone(), c.into()))
         .collect::<Vec<_>>()
         .into();
-    if working_directory == PathBuf::from(".") {
-        return Err(error!(
-            "Working directory shouldn't be current directory because it may be deleted.".into()
-        ));
-    }
     Ok(Config {
         tested_program,
         accepted_program,
@@ -163,7 +158,7 @@ pub fn dynamic_format(
         } = e
         {
             Box::new(ArgFormattingKeyError {
-                stage,
+                stage, // TODO don't repeat it
                 pattern,
                 key,
                 dict_keys,

@@ -58,8 +58,10 @@
         <a href="https://github.com/cup113/oi_checker"><img
                 src="https://img.shields.io/github/license/cup113/oi_checker" alt="MIT License"></a>
     </p>
-    <h2 id="usage">Usage</h2>
-    <pre><code>Usage: oi_checker.exe [OPTIONS]
+    <h2 id="命令行参数">命令行参数</h2>
+    <pre><code>An OI Checker. To get more information, please see README.html
+
+Usage: oi_checker.exe [OPTIONS]
 
 Options:
   -t, --tested &lt;FILE&gt;                   The program which will be tested.
@@ -77,8 +79,23 @@ Options:
   -h, --help                            Print help
   -V, --version                         Print version
 </code></pre>
-    <h2 id="config">Config</h2>
+    <h2 id="配置文件">配置文件</h2>
     <p>详见<code>config_default.toml</code>。</p>
+    <h2 id="使用步骤">使用步骤</h2>
+    <ol>
+        <li>安装程序。</li>
+        <li>将程序所在目录添加至 <code>PATH</code> 中。</li>
+        <li>将程序平级的 <code>config_default.toml</code> 复制一份到 <code>config.toml</code> ，并根据喜好进行修改。</li>
+        <li>根据命令行参数使用</li>
+    </ol>
+    <ul>
+        <li>注: 若需要为一个项目单独设一套配置，可运行命令
+            <code>oi_checker --get-default-config &gt; oi_checker_config.toml</code> ，然后进行修改。
+        </li>
+    </ul>
+    <h2 id="程序运行流程">程序运行流程</h2>
+    <p>大致流程详见<code>state_diagrams/overview.mmd</code></p>
+    <p>TODO</p>
 
 
 

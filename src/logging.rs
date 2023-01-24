@@ -45,9 +45,9 @@ impl From<u32> for Level {
 }
 
 /// A single-threaded logging class.
-/// the length of `name` should be less than or equal 9.
 ///
 /// the length of `content` had better be less than or equal 50.
+#[derive(Debug, Clone)]
 pub struct Logger {
     start: Instant,
     name: String,
@@ -94,12 +94,12 @@ impl Logger {
         self.print_log(&Level::Info, &content);
     }
     pub fn warning<T: Display + ?Sized>(&self, content: &T) {
-        let s = Style::new().yellow().underlined();
+        let s = Style::new().yellow().bold();
         let c = s.apply_to(content);
         self.print_log(&Level::Warning, &c);
     }
     pub fn error<T: Display + ?Sized>(&self, content: &T) {
-        let s = Style::new().red().on_white().underlined();
+        let s = Style::new().red().on_white().bold();
         let c = s.apply_to(content);
         self.error_log(&Level::Error, &c);
     }

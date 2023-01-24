@@ -1,6 +1,7 @@
 //! Filter output.
 
 use crate::prelude::*;
+use std::borrow::Cow;
 use std::io::Write;
 
 #[derive(Debug, Clone, Copy)]
@@ -12,25 +13,25 @@ pub enum OutputFilter {
 
 impl OutputFilter {
     /// Inner choices
-    fn run_strip_trailing_whitespace(content: &String) -> Vec<String> {
+    fn run_strip_trailing_whitespace<'a>(content: &'a String) -> Vec<Cow<'a, str>> {
         let mut ans = Vec::new();
         for line in content.lines() {
-            ans.push(line.trim_end().into());
+            ans.push(Cow::Borrowed(line.trim_end()));
         }
         ans
     }
 
     /// Inner choices
-    fn run_strip_trailing_empty_lines(content: &String) -> Vec<String> {
+    fn run_strip_trailing_empty_lines<'a>(content: &'a String) -> Vec<Cow<'a, str>> {
         let mut ans = Vec::new();
         let mut buffer_empty_lines = 0u32;
         for line in content.lines() {
             if line.is_empty() {
                 buffer_empty_lines += 1;
             } else {
-                ans.push(line.into());
+                ans.push(Cow::Borrowed(line));
                 for _ in 0..buffer_empty_lines {
-                    ans.push("".into());
+                    ans.push(Cow::Owned("".into()));
                 }
                 buffer_empty_lines = 0;
             }
@@ -39,10 +40,15 @@ impl OutputFilter {
     }
 
     /// Inner choices
-    fn run_strip_all_whitespace<'a>(content: &'a String) -> Vec<String> {
+    fn run_strip_all_whitespace<'a>(content: &'a String) -> Vec<Cow<'a, str>> {
         let mut ans = Vec::new();
         for line in content.lines() {
-            ans.push(line.chars().filter(|c| c.is_whitespace()).collect());
+            let filtered_line: String = line.chars().filter(|c| !c.is_whitespace()).collect();
+            ans.push(if filtered_line.len() == line.len() {
+                Cow::Borrowed(line)
+            } else {
+                Cow::Owned(filtered_line)
+            });
         }
         ans
     }
@@ -103,3 +109,7 @@ impl TryFrom<&str> for OutputFilter {
         }
     }
 }
+
+// TODO
+#[cfg(test)]
+mod tests {}
