@@ -46,6 +46,7 @@ impl OIChecker {
     /// Main function, run the checker
     fn run(&mut self) -> CheckerResult<()> {
         let is_work_dir_original = self.init_working_directory()?;
+        // TODO remove created working directory if error.
         self.compile_all()?;
         let (_pool, rx) = self.launch_suites()?;
         let (launch_result_count, ac_launch_indexes) = self.get_launch_result(rx);

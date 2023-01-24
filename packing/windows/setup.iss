@@ -2,10 +2,10 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "OI-Checker"
-#define MyAppVersion "1.0.0-alpha.1"
+#define MyAppVersion "1.0.1-alpha.1"
 #define MyAppPublisher "Jason Li"
 #define MyAppURL "https://github.com/cup113/oi_checker"
-#define MyAppExeName "oi_checker.exe"
+#define MyAppExeName "oi-checker.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -21,11 +21,10 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=F:\projects\oi_checker\LICENSE
-InfoAfterFile=F:\projects\oi_checker\README.html
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputBaseFilename=oi-checker-setup
+OutputBaseFilename=oi-checker-v{#MyAppVersion}-windows-x86_64-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -33,9 +32,6 @@ WizardStyle=modern
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-
-[Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "F:\projects\oi_checker\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -46,8 +42,3 @@ Source: "F:\projects\oi_checker\config_default.toml"; DestDir: "{app}"; Flags: i
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
-[Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
