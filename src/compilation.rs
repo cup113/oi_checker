@@ -24,12 +24,10 @@ impl From<cf_parsing::CompilationConfig> for CompilationConfig {
 
 impl CompilationConfig {
     /// Get arguments of the compilation.
-    /// Return a tuple which means `(target_path, arguments)`
     ///
-    /// # Error
-    ///
-    /// 1. `CheckerError::OsStrUtf8Error` when meet non-UTF-8 characters
-    /// 2. `CheckerError::CompileError` when compilation failed due to
+    /// Returned value:
+    /// - `Ok((target_path, arguments))` => Compile successfully
+    /// - `Err(Box<CheckerError::CompileError>)` => Compile failed due to
     ///    command not found or compiler exited with non-zero code.
     fn get_args(
         &self,

@@ -197,8 +197,8 @@ impl OIChecker {
 
     /// Try to compile a program.
     ///
-    /// Returned value Explanation:
-    /// - `Err(_)` => Compile error or non-UTF-8 error
+    /// Returned value:
+    /// - `Err(_)` => Compile error.
     /// - `Ok(None)` => No correspond extension rule, skip compiling.
     /// - `Ok(Some(_))` => The target program after successful compilation.
     fn compile_one(&self, program: &PathBuf, stage: Stage) -> CheckerResult<Option<PathBuf>> {

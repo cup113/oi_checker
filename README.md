@@ -1,8 +1,6 @@
 # OI-Checker README
 
-可灵活配置的 OI 自动对拍器。
-
-项目处于开发阶段，可能会发生破坏性改动。
+可灵活配置、基于 Rust 开发的 OI 自动对拍器。
 
 [![wakatime](https://wakatime.com/badge/user/b039f61c-2701-482d-9f84-542f07630e52/project/d4ca9e8d-4006-440d-92c7-b95b26fda0e5.svg)](https://wakatime.com/badge/user/b039f61c-2701-482d-9f84-542f07630e52/project/d4ca9e8d-4006-440d-92c7-b95b26fda0e5)
 [![GitHub repo size](https://img.shields.io/github/languages/code-size/cup113/oi_checker)](https://github.com/cup113/oi_checker)
@@ -39,7 +37,7 @@ Options:
 
 ## 使用步骤
 
-1. 安装程序。
+1. 安装程序（下载安装包或 `cargo install` 本地编译）。
 2. 将程序所在目录添加至 `PATH` 中。
 3. 将程序平级的 `config_default.toml` 复制一份到 `config.toml` ，并根据喜好进行修改。
 4. 根据命令行参数使用

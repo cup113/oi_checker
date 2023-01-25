@@ -10,7 +10,7 @@ use crate::compilation::CompilationConfig;
 use crate::launch::diff_tool::DiffTool;
 use crate::launch::filter::OutputFilter;
 use crate::launch::LaunchConfig;
-use dyn_formatting::{self, DynamicFormatError};
+use dyn_formatting::{self, DynamicFormatError, DynamicFormatErrorKind};
 
 const CONFIG_FILE_DEFAULT: &'static str = include_str!("../config_default.toml");
 
@@ -131,8 +131,7 @@ impl<T> From<Vec<(Vec<String>, T)>> for ExtensionRules<T> {
     }
 }
 
-/// Simple, dynamic, Python-styled string formatting (Only support `String`,
-/// `{key}` patterns ).
+/// Wrapped function for `dyn_formatting::dynamic_format`
 ///
 /// Escape like `{{` or `}}`.
 ///
@@ -148,31 +147,23 @@ pub fn dynamic_format(
     stage: Stage,
 ) -> CheckerResult<String> {
     use CheckerError::*;
-    use DynamicFormatError::*;
-    dyn_formatting::dynamic_format(pattern, dictionary).map_err(|e| {
-        if let KeyError {
-            pattern,
-            key,
-            dict_keys,
-            pos,
-        } = e
-        {
-            Box::new(ArgFormattingKeyError {
-                stage, // TODO don't repeat it
-                pattern,
-                key,
-                dict_keys,
-                pos,
-            })
-        } else if let TokenError { pattern, desc, pos } = e {
-            Box::new(ArgFormattingTokenError {
+    use DynamicFormatErrorKind::*;
+    let ans = dyn_formatting::dynamic_format(pattern, dictionary).map_err(|e| {
+        match e.kind {
+            KeyError { key, entries } => ArgFormattingKeyError {
                 stage,
-                pattern,
+                pattern: e.pattern,
+                key,
+                entries,
+                pos: e.pos,
+            },
+            TokenError { desc } => ArgFormattingTokenError {
+                stage,
+                pattern: e.pattern,
                 desc,
-                pos,
-            })
-        } else {
-            unreachable!();
+                pos: e.pos,
+            },
         }
-    })
+    })?;
+    Ok(ans)
 }

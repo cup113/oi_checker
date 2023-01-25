@@ -20,13 +20,12 @@ impl Level {
     }
 
     fn to_str(&self) -> &'static str {
-        match self.as_value() {
-            1 => "TRACE",
-            2 => "INFO",
-            3 => "WARNING",
-            4 => "ERROR",
-            5 => "FATAL",
-            _ => unreachable!(),
+        match self {
+            Self::Trace => "TRACE",
+            Self::Info => "INFO",
+            Self::Warning => "WARNING",
+            Self::Error => "ERROR",
+            Self::Fatal => "FATAL",
         }
     }
 }

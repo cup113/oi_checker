@@ -2,9 +2,11 @@
 //!
 //! Also provide display & exit code
 
-use crate::prelude::{io, Display, PathBuf};
 use std::borrow::Cow;
+
 use toml;
+
+use crate::prelude::{io, Display, PathBuf};
 
 /// All error variants in OI Checker
 #[derive(Debug)]
@@ -35,7 +37,7 @@ pub enum CheckerError {
         stage: Stage,
         pattern: String,
         key: String,
-        dict_keys: Vec<String>,
+        entries: Vec<(String, String)>,
         pos: usize,
     },
     CommandError {
@@ -70,28 +72,31 @@ impl CheckerError {
     }
 
     pub fn get_help<'a>(&'a self) -> std::borrow::Cow<'a, str> {
-        use Cow::{Borrowed, Owned};
+        use Cow::{Borrowed as B, Owned as O};
         match self {
-            Self::CfgFileReadingError { .. } => Borrowed("Check file permission."),
-            Self::CfgFileParsingError { .. } => Borrowed(
+            Self::CfgFileReadingError { .. } => B("Check file permission."),
+            Self::CfgFileParsingError { .. } => B(
                 "Check if the file is TOML grammatical and has all the fields \
                 and correspond types.",
             ),
-            Self::CfgIntegrateError { .. } => Borrowed("Check if the value is legal (in options)."),
+            Self::CfgIntegrateError { .. } => B("Check if the value is legal (in options)."),
             Self::CreateWorkDirError { .. } => {
-                Borrowed("Check directory permission. Avoid using nested path.")
+                B("Check directory permission. Avoid using nested path.")
             }
-            Self::ArgFormattingTokenError { .. } => Borrowed("Correct the grammar of formatting"),
-            Self::ArgFormattingKeyError { dict_keys, .. } => {
-                Owned(format!("Possible keys are: {}", dict_keys.join(",")))
-            }
-            Self::CommandError { .. } => Borrowed("Check your program or config."),
-            Self::FilterError { .. } => {
-                Borrowed("This error shouldn't occur, it's a TOC-TOU error.")
-            }
-            Self::DiffToolError { .. } => {
-                Borrowed("Please check if the different tool program exists.")
-            }
+            Self::ArgFormattingTokenError { .. } => B("Correct the grammar of formatting"),
+            Self::ArgFormattingKeyError {
+                entries: dict_keys, ..
+            } => O(format!(
+                "Possible key-value pairs are:\n{}",
+                dict_keys
+                    .iter()
+                    .map(|(key, value)| format!("- {}: {}", key, value))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )),
+            Self::CommandError { .. } => B("Check your program or config."),
+            Self::FilterError { .. } => B("This error shouldn't occur, it's a TOC-TOU error."),
+            Self::DiffToolError { .. } => B("Please check if the different tool program exists."),
         }
     }
 }
@@ -126,7 +131,7 @@ impl Display for CheckerError {
             } => write!(
                 f,
                 "Error when parsing arguments during {}: Token Error ({}) when \
-                parsing pattern \"{}\" at pos {}.\n",
+                parsing pattern \"{}\" at pos {}.",
                 stage, desc, pattern, pos
             ),
             ArgFormattingKeyError {
