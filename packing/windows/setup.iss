@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "OI-Checker"
-#define MyAppVersion "1.0.1-alpha.1"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Jason Li"
 #define MyAppURL "https://github.com/cup113/oi_checker"
 #define MyAppExeName "oi-checker.exe"
@@ -24,7 +24,7 @@ LicenseFile=F:\projects\oi_checker\LICENSE
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputBaseFilename=oi-checker-v{#MyAppVersion}-windows-x86_64-setup
+OutputBaseFilename=oi-checker-v{#MyAppVersion}-win64-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -34,10 +34,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
 [Files]
-Source: "F:\projects\oi_checker\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "F:\projects\oi_checker\README.html"; DestDir: "{app}"; Flags: ignoreversion
-Source: "F:\projects\oi_checker\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-Source: "F:\projects\oi_checker\config_default.toml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\README.html"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\config_default.toml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\changelog.md"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

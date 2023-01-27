@@ -27,12 +27,16 @@ static LOGGER: Lazy<Logger> = Lazy::new(|| Logger::new("OIChecker".into(), LOGGE
 
 fn main() {
     let mut oi_checker = OIChecker::new().unwrap_or_else(|err| err.destruct());
-    oi_checker.run().unwrap_or_else(|err| err.destruct());
+    oi_checker.run().unwrap_or_else(|err| {
+        oi_checker.handle_error(err);
+    });
     LOGGER.info("Program exits successfully.");
 }
 
 struct OIChecker {
     config: Config,
+    created_work_dir: bool,
+    launch_started: bool,
 }
 
 impl OIChecker {
@@ -40,25 +44,40 @@ impl OIChecker {
     fn new() -> CheckerResult<Self> {
         let config = config::get_config()?;
         LOGGER.info("Program begins running.");
-        Ok(Self { config })
+        Ok(Self {
+            config,
+            created_work_dir: false,
+            launch_started: false,
+        })
     }
 
     /// Main function, run the checker
     fn run(&mut self) -> CheckerResult<()> {
-        let is_work_dir_original = self.init_working_directory()?;
-        // TODO remove created working directory if error.
+        self.created_work_dir = self.init_working_directory()?;
         self.compile_all()?;
+        self.launch_started = true;
         let (_pool, rx) = self.launch_suites()?;
         let (launch_result_count, ac_launch_indexes) = self.get_launch_result(rx);
         LOGGER.info("Test finished.");
         self.report_total_score(launch_result_count);
-        self.clean_generated_files(ac_launch_indexes, is_work_dir_original);
+        self.clean_generated_files(ac_launch_indexes);
         Ok(())
+    }
+
+    fn handle_error(&self, err: Box<CheckerError>) -> ! {
+        if self.created_work_dir && !self.launch_started {
+            if let Err(err) = fs::remove_dir_all(self.config.working_directory.as_path()) {
+                LOGGER.warning(&format!("Failed to remove working directory: {}", err));
+            } else {
+                LOGGER.info("An error occurs, so the temporary working directory removed.");
+            }
+        }
+        err.destruct();
     }
 
     /// Create the working directory if it doesn't exist.
     ///
-    /// Return if the working directory exists before creating.
+    /// Return if the working directory is created.
     ///
     /// Return `Err(Box<CheckerError::CreateWorkDirError>)` if IOError occurs.
     fn init_working_directory(&self) -> CheckerResult<bool> {
@@ -69,9 +88,9 @@ impl OIChecker {
                     dir: self.config.working_directory.to_owned(),
                 }
             })?;
-            Ok(false)
-        } else {
             Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
@@ -183,12 +202,12 @@ impl OIChecker {
     /// Clean generated files with `self.config.auto_remove_files` setting.
     ///
     /// `ac_launch_indexes` --- the vec generated in `get_launch_result` step
-    fn clean_generated_files(&self, ac_launch_indexes: Vec<u32>, is_work_dir_original: bool) {
+    fn clean_generated_files(&self, ac_launch_indexes: Vec<u32>) {
         match self.config.auto_remove_files.run(
             ac_launch_indexes,
             self.config.test_cases,
             &self.config.working_directory,
-            is_work_dir_original
+            self.created_work_dir,
         ) {
             Ok(_) => (),
             Err(err) => LOGGER.error(&format!("Failed to remove files: {}", err)),

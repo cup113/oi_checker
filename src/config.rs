@@ -10,7 +10,7 @@ use crate::compilation::CompilationConfig;
 use crate::launch::diff_tool::DiffTool;
 use crate::launch::filter::OutputFilter;
 use crate::launch::LaunchConfig;
-use dyn_formatting::{self, DynamicFormatError, DynamicFormatErrorKind};
+use dyn_formatting::{self, DynamicFormatErrorKind};
 
 const CONFIG_FILE_DEFAULT: &'static str = include_str!("../config_default.toml");
 
@@ -40,7 +40,14 @@ pub fn get_config() -> CheckerResult<Config> {
     let test_cases = get_default!(test_cases);
     let test_threads = get_default!(test_threads);
     let ac_timeout = Duration::from_millis(get_default!(ac_timeout).into());
-    let program_timeout = Duration::from_millis(get_default!(program_timeout).into());
+    let program_timeout = {
+        let program_timeout = Duration::from_millis(get_default!(program_timeout).into());
+        if program_timeout >= ac_timeout {
+            program_timeout
+        } else {
+            ac_timeout
+        }
+    };
     let working_directory = get_default!(working_directory);
     let auto_remove_files: AutoRemoveFiles = get_default!(auto_remove_files)
         .as_str()

@@ -17,7 +17,7 @@ impl AutoRemoveFiles {
         ac_launch_indexes: Vec<u32>,
         test_cases: u32,
         work_dir: &PathBuf,
-        is_work_dir_original: bool,
+        created_work_dir: bool,
     ) -> Result<(), io::Error> {
         let remove_suite = |i: u32| -> io::Result<()> {
             fs::remove_file(work_dir.join(format!("data{}.in", i)))?;
@@ -27,11 +27,11 @@ impl AutoRemoveFiles {
         };
 
         let remove_all = || -> io::Result<()> {
-            if is_work_dir_original {
-                return Ok(());
+            // If working directory exists originally, it shouldn't be removed.
+            if created_work_dir {
+                fs::remove_dir_all(work_dir)?;
+                crate::LOGGER.info("Remove working directory.");
             }
-            fs::remove_dir_all(work_dir)?;
-            crate::LOGGER.info("Remove working directory.");
             Ok(())
         };
 
@@ -42,9 +42,7 @@ impl AutoRemoveFiles {
                     remove_suite(i)?;
                 }
                 crate::LOGGER.info(&format!("Remove all {} generated files.", test_cases));
-                if ac_launch_indexes.len() == test_cases as usize {
-                    remove_all()?;
-                }
+                remove_all()?;
                 Ok(())
             }
             Self::AC => {

@@ -110,6 +110,40 @@ impl TryFrom<&str> for OutputFilter {
     }
 }
 
-// TODO
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_trailing_whitespace() {
+        let content = "12345  \n 12345 \n  123 45 \n ".into();
+        let res = OutputFilter::run_strip_trailing_whitespace(&content);
+        assert_eq!(res[0].to_string(), "12345".to_string());
+        assert_eq!(res[1].to_string(), " 12345".to_string());
+        assert_eq!(res[2].to_string(), "  123 45".to_string());
+        assert!(res[3].is_empty());
+    }
+
+    #[test]
+    fn test_strip_trailing_empty_lines() {
+        let content = "12345 \n 12345 \n 123 45 \n \n\n\n".into();
+        let res = OutputFilter::run_strip_trailing_empty_lines(&content);
+        assert_eq!(res[0].to_string(), "12345 ".to_string());
+        assert_eq!(res[1].to_string(), " 12345 ".to_string());
+        assert_eq!(res[2].to_string(), " 123 45 ".to_string());
+        assert_eq!(res[3].to_string(), " ".to_string());
+        assert!(res.get(4).is_none());
+    }
+
+    #[test]
+    fn test_strip_all_whitespace() {
+        let content = "1 2 3 45 \n 12345 \n 123 45 \n \n\n\n".into();
+        let res = OutputFilter::run_strip_all_whitespace(&content);
+        assert_eq!(res[0].to_string(), "12345".to_string());
+        assert_eq!(res[1].to_string(), "12345".to_string());
+        assert_eq!(res[2].to_string(), "12345".to_string());
+        assert_eq!(res[3].to_string(), "".to_string());
+        assert!(res.get(5).is_some());
+        assert!(res.get(7).is_none());
+    }
+}

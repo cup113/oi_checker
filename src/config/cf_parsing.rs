@@ -5,8 +5,7 @@ use serde::Deserialize;
 use std::env;
 use toml;
 
-/// Parse the config file.
-pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
+fn get_config_filename() -> PathBuf {
     let program_dir = env::current_exe()
         .expect("Can't get env::current_exe")
         .parent()
@@ -30,7 +29,12 @@ pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
             &alter_files[2]
         })
     };
+    config_file.to_owned()
+}
 
+/// Parse the config file.
+pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
+    let config_file = get_config_filename();
     let config = fs::read_to_string(config_file.as_path()).map_err(|err| {
         CheckerError::CfgFileReadingError {
             err,
@@ -42,7 +46,7 @@ pub fn parse_config_file() -> CheckerResult<(Config, PathBuf)> {
             err,
             file: config_file.to_owned(),
         })?;
-    Ok((config, config_file.to_owned()))
+    Ok((config, config_file))
 }
 
 /// Main configuration of config file

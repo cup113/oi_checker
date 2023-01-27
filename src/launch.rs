@@ -1,5 +1,4 @@
 //! Main module: Launch the programs.
-//! #TODO check logic
 
 pub mod diff_tool;
 pub mod filter;
@@ -50,7 +49,7 @@ impl LaunchConfig {
         Ok(args)
     }
 
-    /// TODO doc
+    /// Launch the program. Send messages to the main thread.
     fn run_inner(
         mut command: Command,
         input_file: &Option<PathBuf>,
@@ -91,7 +90,14 @@ impl LaunchConfig {
         fs::write(output_file, output.stdout).ignore();
     }
 
-    /// TODO doc
+    /// Run the program.
+    ///
+    /// Returned value:
+    /// - Err(_) => Failed to format arguments.
+    /// - Ok(Success(duration)) => Succeed in launching the program. The program
+    ///   finished running in `timeout`.
+    /// - Ok(Timeout(duration)) => Succeed in launching the program, but the
+    ///   program didn't finish running in `timeout`.
     pub fn run(
         &self,
         file: &PathBuf,
@@ -160,6 +166,7 @@ pub struct SuiteLauncher {
 }
 
 impl SuiteLauncher {
+    /// Launch a suite. Send messages of launch result.
     pub fn run_suite(&self, index: u32, tx: mpsc::Sender<LaunchSuiteResult>) {
         tx.send(LaunchSuiteResult {
             index,
@@ -167,7 +174,9 @@ impl SuiteLauncher {
         })
         .expect("Sender should send successfully");
     }
-    /// TODO doc
+    /// Launch a program.
+    ///
+    /// Return the same as `crate::launch::LaunchConfig::run`
     fn run_one(
         &self,
         program: &PathBuf,
@@ -194,7 +203,7 @@ impl SuiteLauncher {
         )
     }
 
-    /// TODO doc
+    /// Launch a suite. Called by `self.run_suite`.
     fn run_suite_inner(&self, index: u32) -> LaunchSuiteEnum {
         let work_dir = &self.working_directory;
         let data_file = work_dir.join(format!("data{}.in", index));

@@ -71,7 +71,7 @@ impl CheckerError {
         process::exit(1);
     }
 
-    pub fn get_help<'a>(&'a self) -> std::borrow::Cow<'a, str> {
+    pub fn get_help(&self) -> std::borrow::Cow<'static, str> {
         use Cow::{Borrowed as B, Owned as O};
         match self {
             Self::CfgFileReadingError { .. } => B("Check file permission."),
@@ -175,7 +175,7 @@ impl Display for CheckerError {
             DiffToolError { command, args, err } => write!(
                 f,
                 "Error during comparing files: {}\n\
-                Command: \"{}\" {}\n",
+                Command: \"{}\" {}",
                 err,
                 command,
                 args.iter()
